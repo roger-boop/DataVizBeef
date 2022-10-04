@@ -49,6 +49,12 @@ Now that the data is in a more presentable state we can start looking at the mea
   
   - **Der_Quantile: **95% empirical quantile under neutrality.
   
+  - **Uniq_Shared: **?
+  
+  - **D(Nea): **?
+  
+  - **fD(Nea): **?
+  
   - **Genes: **Gene encoded by the segment selected.
   
   - **Lit_overlap: **?
