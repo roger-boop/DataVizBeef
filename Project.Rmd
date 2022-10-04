@@ -9,7 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+## Observing the data
 For this project we will take a look at the information collected from the 1000 genome project by Fernando Racimo, Davide Marnetto and Emilia Huerta-Sánchez who wanted to find cases of Adaptive Introgression in humans using this data.
 
 As in any other project of this kind the first step is to take a look at the data we are studding. We will do that by loading into R a table with the information of interest extracted from the **_Signatures of Archaic Adaptive Introgression in Present-Day Human Populations_** article written by the previously mentioned researchers.
@@ -27,12 +27,43 @@ If we take a look at the information each column of our table holds we will find
 data <- DATA %>% separate(`Chr:Start-End`, c("Chr", "Start", "End"))
 data
 ```
+
+## Meaning behind the columns
 Now that the data is in a more presentable state we can start looking at the meaning of each column:
 
   - **Mode: **It indicates from where the outgroup used for each sample comes from.
   
-  - **Outgroup_Max_Freq: ** It indicates the maximum frequency each segment has in the outgroup used.
+  - **Outgroup_Max_Freq: **It indicates the maximum frequency each segment has in the outgroup used.
   
-  - **Ingroup_Min_Freq: ** It indictaes the minimum frequency of each segment in the ingroup used.
+  - **Ingroup_Min_Freq: **It indictaes the minimum frequency of each segment in the ingroup used.
   
-  - **Archaic_pop: ** 
+  - **Modern_pop: **Population where the sample comes from.
+  
+  - **Archaic_pop: **It indicates if the sample is Neanderthal-specific, Denisova-specific or could belong to both                          genomes.
+  
+  - **Chr: **It indicates to which chromosome the segment belongs.
+  
+  - **Start: **It indicates in which position of the chromosome the selected segment starts.
+  
+  - **End: **It indicates in which position of the chromosome the selected segment ends.
+  
+  - **Der_Quantile: **95% empirical quantile under neutrality.
+  
+  - **Genes: **Gene encoded by the segment selected.
+  
+  - **Lit_overlap: **?
+  
+## Transforming character vectors into factors
+
+Some of the non-numerical values in the data set are translated as characters instead of factor in r, to prevent future mistakes we will transform set values into factors.
+```{r}
+data$Mode = factor(data$Mode)
+data$Modern_pop = factor(data$Modern_pop)
+data$Archaic_pop = factor(data$Archaic_pop)
+data$Chr = factor(data$Chr)
+data$Genes = factor(data$Genes)
+data$Lit_overlap = factor(data$Lit_overlap)
+```
+  
+## Wide format or Long format?
+Finally we must determine if the table presented is in a long or wide format. It seems each row is destined to show one measure for one observation which indicates that the data in front of us is in long format.
