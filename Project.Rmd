@@ -1,0 +1,38 @@
+---
+title: "Project"
+author: "Albet Vidal, Roger Bosch and Òscar Casals"
+date: "2022-10-04"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+For this project we will take a look at the information collected from the 1000 genome project by Fernando Racimo, Davide Marnetto and Emilia Huerta-Sánchez who wanted to find cases of Adaptive Introgression in humans using this data.
+
+As in any other project of this kind the first step is to take a look at the data we are studding. We will do that by loading into R a table with the information of interest extracted from the **_Signatures of Archaic Adaptive Introgression in Present-Day Human Populations_** article written by the previously mentioned researchers.
+
+```{r}
+library(readxl)
+library(dplyr)
+library(tidyr)
+DATA <- read_excel("TableS3_excelfile.xlsx")
+```
+
+If we take a look at the information each column of our table holds we will find that the third column of the data set is hard to read, this is because it holds the information of three different variables instead of just one. By dividing this variables in three different columns the contents of the table become more pleasant to the eye and easier to work with.
+
+```{r}
+data <- DATA %>% separate(`Chr:Start-End`, c("Chr", "Start", "End"))
+data
+```
+Now that the data is in a more presentable state we can start looking at the meaning of each column:
+
+  - **Mode: **It indicates from where the outgroup used for each sample comes from.
+  
+  - **Outgroup_Max_Freq: ** It indicates the maximum frequency each segment has in the outgroup used.
+  
+  - **Ingroup_Min_Freq: ** It indictaes the minimum frequency of each segment in the ingroup used.
+  
+  - **Archaic_pop: ** 
