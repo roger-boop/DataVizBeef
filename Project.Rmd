@@ -8,6 +8,7 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+# Part A
 
 ## Observing the data
 For this project we will take a look at the information collected from the 1000 genome project by Fernando Racimo, Davide Marnetto and Emilia Huerta-Sánchez who wanted to find cases of Adaptive Introgression in humans using this data.
@@ -72,4 +73,28 @@ data$Lit_overlap = factor(data$Lit_overlap)
 ```
   
 ## Wide format or Long format?
-Finally we must determine if the table presented is in a long or wide format. It seems each row is destined to show one measure for one observation which indicates that the data in front of us is in long format.
+Finally we must determine if the table presented is in a long or wide format. It seems the data is in wode format due to the fact that ...
+
+#Part B
+
+## Distribution of the variables
+Now that we know in what our data consists it is time to find out which distribution are they following.
+In order to accomplish this task we have to select a continuous and a discrete variable and represent them in a bar plot. The selected continuous variable was Der_Quantile and the discrete variable was the number of segments each quantile contains.
+```{r}
+library(ggplot2)
+graph_quant <- ggplot(data = data, mapping = aes(x = Der_Quantile)) + geom_histogram() + labs(y = 'Number of sequences', title = 'Der_Quantiles')
+graph_quant
+```
+By looking at the plot above becomes apparent that our data follows a multimodal edge peak distribution.
+
+We can also notice how most of the sequences are located in the third quantile(0.50-0.75) and how shallow is the quantity of sequences in the last quantile in comparassion to the rest of the graph.
+
+
+##Sumerise the data
+A part from finding out the distribution of the quantiles we would also like to know the ancient populations that can be found in each of the quantiles. The best fitted graph for this task is the boxplot.
+```{r}
+ggplot(data = data, mapping = aes(x = Der_Quantile, y = Archaic_pop, fill = Archaic_pop)) + geom_boxplot() + theme_classic() + labs(title = 'Ancient populations in each quantile')
+```
+Thanks to this boxplot we can observe that: neanderthal specific segments tend to be in the third quartile(0.50-0.75), Denisova specific fragments are usually in the second quantile(0.25-0.50) and the fragments that are not specific to any of the populations studied are mostly found in the second quantile(0.25 - 0.50).
+
+We can also see how that the few sequences present in the fourth quantile(0.75 - 1) are neanderthal specific.
