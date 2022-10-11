@@ -100,3 +100,33 @@ ggplot(data = data, mapping = aes(x = Der_Quantile, y = Archaic_pop, fill = Arch
 Thanks to this boxplot we can observe that: neanderthal specific segments tend to be in the third quartile(0.50-0.75), Denisova specific fragments are usually in the second quantile(0.25-0.50) and the fragments that are not specific to any of the populations studied are mostly found in the second quantile(0.25 - 0.50).
 
 We can also see how that the few sequences present in the fourth quantile(0.75 - 1) are neanderthal specific.
+
+## Describing our data
+
+### Plotting the chromosomes
+
+Now it is time to start looking at some other variables a part from the quantiles, this time we will see how many segments we have of each chromosome and if those segments are specific to an archaic population or not.
+
+```{r}
+ggplot(data = data, mapping = aes(x = Chr, fill = Archaic_pop)) + geom_bar() + geom_text(mapping = aes(label = ..count..),position = position_stack(vjust = 0.5), colour = "black", stat = "count") + coord_flip() + labs(title = "Samples for each chromosome", x = "Chromosome") + scale_fill_brewer(name = "Archaic population", labels = c("Both", "Denisova-specific","Neanderthal-specific"), palette = "Pastel1")
+```
+
+The graph displayed above shows that most of the fragments in our graph come from chromosome 1 and most of them are Denisova-specific. The reason why we have so many samples of this chromosome could be because it is the largest in humans, therefore there is a lot of segments to extract from there.
+
+We can also notice how we barely have samples of chromosome 21 and that all of the segments from it are Denisova-specific. We suppose this happended because chromosome 21 is the smallest one in humans.
+
+Finally we can also notice that chromosome 17's samples are or Denisova-specific or Neanderthal-specific.A possible reason could be that this chromosome contains the the Homeobox B gene cluster, a DNA sequence involved in the regulation of patterns of anatomical developement.
+
+### Plot 2
+
+????
+
+### Plot 3
+
+????
+
+# Sources
+
+Signatures of Archaic Adaptive Introgression in Present-Day Human Populations by Fernando Racimo, Davide Marnetto and Emilia Huerta-Sánchez
+
+The information of each chromosome used to try to explain the data in _Samples for each chromosome_ plot was collected from the wikipedia entries of each of the highlighted chromosomes.
