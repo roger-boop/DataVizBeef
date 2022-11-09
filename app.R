@@ -28,16 +28,23 @@ ui <- fluidPage(
     
     sidebarLayout(
         sidebarPanel(
+          # TODO: ponerle texto al sidebar para que quede claro que inputs corresponden a que plots
           #heatmap variables
+          radioButtons("heatmapColorscheme", "Color scheme", choices = c("magma", "inferno", "plasma", "viridis", "cividis", "rocket",
+                                                                         "mako", "turbo"), selected = "viridis"),
           checkboxGroupInput("heatmapModeInput", "Continents", choices = unique(DATA$Mode), selected = unique(DATA$Mode)),
-          checkboxGroupInput("heatmapModernPopInput", "Modern Populations", choices = unique(DATA$Modern_pop), selected = unique(DATA$Modern_pop)),
-          checkboxGroupInput("heatmapArchaicPopInput", "Archaic Populations", choices = unique(DATA$Archaic_pop), selected = unique(DATA$Archaic_pop)),
+          checkboxGroupInput("heatmapModernPopInput", "Modern Populations", choices = unique(DATA$Modern_pop), 
+                             selected = unique(DATA$Modern_pop)),
+          checkboxGroupInput("heatmapArchaicPopInput", "Archaic Populations", choices = unique(DATA$Archaic_pop), 
+                             selected = unique(DATA$Archaic_pop)),
           #violin variables
           br(), br(),
           sliderInput("violinUniqSharedInput", "Unique Shared", min = min(DATA$Uniq_Shared), 
                       max = max(DATA$Uniq_Shared), value = c(min(DATA$Uniq_Shared), max(DATA$Uniq_Shared))),
-            checkboxGroupInput("violinModernPopInput", "Modern Populations", choices = unique(DATA$Modern_pop), selected = unique(DATA$Modern_pop)),
-            checkboxGroupInput("violinArchaicPopInput", "Archaic Populations", choices = unique(DATA$Archaic_pop), selected = unique(DATA$Archaic_pop))
+            checkboxGroupInput("violinModernPopInput", "Modern Populations", choices = unique(DATA$Modern_pop), 
+                               selected = unique(DATA$Modern_pop)),
+            checkboxGroupInput("violinArchaicPopInput", "Archaic Populations", choices = unique(DATA$Archaic_pop), 
+                               selected = unique(DATA$Archaic_pop))
         ),
         
         mainPanel(
@@ -60,6 +67,8 @@ server <- function(input, output) {
   
     # HEATMAP PLOT
     
+    
+    #TODO: hacer que al pasar el raton por encima del heatmap salga info
     output$heatmapPlot <- renderPlot({
       heatmapFiltered <- DATA %>% filter(
         Mode %in% input$heatmapModeInput,
@@ -69,7 +78,7 @@ server <- function(input, output) {
       
       ggplot(data = heatmapFiltered, aes(x = Archaic_pop, y = Modern_pop)) + geom_bin2d() + 
         facet_grid(cols = vars(Mode), scales = "free") + theme(panel.grid.major.x = element_blank()) + 
-        xlab("Archaic population") + ylab("Modern population") + scale_fill_viridis("Amount")
+        xlab("Archaic population") + ylab("Modern population") + scale_fill_viridis("Amount", option = input$heatmapColorscheme)
     })
     
     output$heatmapResults <- renderDataTable({
@@ -83,6 +92,7 @@ server <- function(input, output) {
     
     # VIOLIN PLOT
   
+    #TODO: haver que al pasar el raton por los puntos salga info
     output$violinPlot <- renderPlot({
       violinFiltered <- DATA %>% filter(
         Uniq_Shared >= input$violinUniqSharedInput[1],
@@ -91,7 +101,7 @@ server <- function(input, output) {
         Archaic_pop %in% input$violinArchaicPopInput
         
       )
-      # FIX: ARCHAIC LABELS BEING ALWAYS NEA
+      # FIX: LOS LABELS DE ARCHAIC SIEMPRE SON NEA (NOSE PORQUE)
       ggplot(data = violinFiltered, mapping = aes(x = Modern_pop, y = Uniq_Shared)) + geom_jitter(mapping = aes(colour = Archaic_pop)) + 
         geom_violin(alpha = 0.4) + scale_colour_viridis_d("Archaic Population", labels = violinFiltered$Archaic_pop) + 
         labs(xlab = "Modern population", ylab = "Uniquely shared", title = "Uniquely shared alleles in modern populations") + 
