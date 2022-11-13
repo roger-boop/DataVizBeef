@@ -1,0 +1,371 @@
+---
+title: "Untitled"
+author: "Albert Vidal, Roger Bosh and Òscar Casals Morro"
+date: "2022-11-13"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# PART C
+
+For this part of the project we will create a shiny app containing interactive plots based on the last three we made for part B.
+
+Having an interactive version of those three plots will allow us to move more freely throught the data and extract the information we are searching faster.
+
+Our plots will have to meet the following criteria:
+
+  - At least one of them must use an **_htmlwidget_**.
+  
+  - At least one of them must use **_interactive controls_**
+  
+  - At least one of them must use an **_interactive visualisation_**.
+  
+## Tiding up the data
+
+As in any r project we will first have to load the libraries we will be using through all the lab.
+
+```{r}
+library(readxl)
+library(dplyr)
+library(tidyr)
+library(viridis)
+library(ggplot2)
+library(shiny)
+```
+
+Once this steo is done we can start making our data more readable, in order to acomplish that we will: separate the start, end and number of chromosome in three different columns so as to make our data easier to read and navigate, and sort the chromosomes by their number so our table and graphs become easier to follow.
+
+```{r}
+DATA <- read_excel("TableS3_excelfile.xlsx")
+DATA <- DATA %>% separate(`Chr:Start-End`, c("Chr", "Start", "End"))
+chrOrder <-c("chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19", "chr20", "chr21", "chr22", "chrM", "chrY", "chrX")
+DATA$Chr = factor(DATA$Chr, levels = chrOrder, ordered = TRUE)
+DATA$Mode = factor(DATA$Mode)
+DATA$Modern_pop = factor(DATA$Modern_pop)
+DATA$Archaic_pop = factor(DATA$Archaic_pop)
+DATA$Chr = factor(DATA$Chr)
+DATA$Genes = factor(DATA$Genes)
+DATA$Lit_overlap = factor(DATA$Lit_overlap)
+```
+
+Now with the data tidied up we are ready to start creating our interactive plots.
+
+
+## Chromosome counts
+
+Our first plot consists of a barplot of the chromosome counts in our data. 
+
+Each chromosome is located on the y-axis and it's count can be found on the X-axis. The colors that appear on each bar represent one of the three ancient populations in our data.
+
+The reason why we opted for interactive controls in this graph was that it displays in a straightforward way the chromosomes and their origin, which makes it ideal to locate specific rows in our data.
+
+```{r, eval = FALSE}
+# Part of the barplot located in ui
+
+  tabPanel("Barplot",
+    titlePanel("PLACEHOLDER"),
+    sidebarLayout(
+      sidebarPanel(
+        #Barplot variables
+        checkboxGroupInput("Chr_inp", "Barplot_chromosome_input", choices = unique(DATA$Chr), selected = unique(DATA$Chr)),
+        sliderInput("count_barplot", "Maximum count and minimum count", min = 0,max = 250, value = c(0, 250)),
+        radioButtons("Bar_color_scheme", "Barplot Color scheme", choices = c("Accent", "Set3", "Spectral", "Set1", "Dark2", "Paired",
+                                                                            "mako", "OrRd", "Pastel1"), selected = "Pastel1")
+        ),
+      mainPanel(
+        plotOutput("Barplot", click = "click_action"),tableOutput("click_info")
+      )
+    )
+  ),
+
+# Part of the barplot located in server
+
+output$Barplot <- renderPlot({
+    B_data <- DATA %>% filter(Chr %in% input$Chr_inp, 
+                              Chr %in% names(which(table(Chr) >= input$count_barplot[1])), 
+                              Chr %in% names(which(table(Chr) <= input$count_barplot[2])))
+    ggplot(data = B_data, mapping = aes(x = Chr, fill = Archaic_pop)) + geom_bar() + 
+      geom_text(mapping = aes(label = ..count..),position = position_stack(vjust = 0.5), colour = "black", stat = "count") + coord_flip() + 
+      labs(title = "Samples for each chromosome", x = "Chromosome") + scale_fill_brewer(name = "Archaic population", 
+                                                                                        labels = c("Both", "Denisova-specific","Neanderthal-specific"), palette = input$Bar_color_scheme) + theme_classic()})
+  
+  output$click_info <- renderTable({
+    if(is.null(input$click_action$x)){
+      return()
+    }
+    else{
+      selected_level <- levels(DATA$Chr)[round(input$click_action$y)]
+      
+      res <- DATA[DATA$Chr %in% selected_level,]
+      res
+    }
+  })
+
+```
+
+As it can be seen we have also opted to add some htmlwidgets in order to allow the user to select a certain chromosome, filter them by count or choose a color palette. The first two html widgets were added so the user can filter the data in case he can't find at plain sight what he is looking for and the option to select a color palettete was thought out to offer people with color blindness alternatives in case they have difficulties segregating the colors of the bars.
+
+## Heatmap
+
+This plot was built in order to analyse the origin and geographical disribution of our samples.
+
+The way this plot looks makes it ideal to compare different continents or pupulations,that's why we decided to add htmlwidgets that allow the removal of the data that doesn't take part in set comparasions.
+
+```{r, eval = FALSE}
+#Part of the heatmap inside ui
+tabPanel("Heatmap",
+    # Application title
+    titlePanel("PLACEHOLDER"),
+    # Show a plot of the generated distribution
+    sidebarLayout(
+      sidebarPanel(
+        #heatmap variables
+        radioButtons("heatmapColorscheme", "Color scheme", choices = c("magma", "inferno", "plasma", "viridis", "cividis", "rocket",
+                                                                       "mako", "turbo"), selected = "viridis"),
+        checkboxGroupInput("heatmapModeInput", "Continents", choices = unique(DATA$Mode), selected = unique(DATA$Mode)),
+        checkboxGroupInput("heatmapModernPopInput", "Modern Populations", choices = unique(DATA$Modern_pop), 
+                           selected = unique(DATA$Modern_pop)),
+        checkboxGroupInput("heatmapArchaicPopInput", "Archaic Populations", choices = unique(DATA$Archaic_pop), 
+                           selected = unique(DATA$Archaic_pop))
+      ),
+      mainPanel(
+        #heatmap
+        plotOutput("heatmapPlot"),
+        dataTableOutput("heatmapResults")
+      )
+    )
+  ),
+```
+
+A part from the htmlwidgets we also incorporated interactive visualisation of the data selected. This was done in order to not overwhelm the user with all the information that could appear.
+
+## Violin plot
+
+Finally, we created a violin plot to check how many alleles are uniquely shared in modern populations.
+
+Our focus with this plot was interactive visualization since thanks to it the user could search for the results he wanted to observe, such as focusing on a particular ancient population or a certain chromosome, and therefore do a much better job observing the ammount of alleles uniquely shared in modern populations.
+
+```{r, eval=FALSE}
+#Part of the violin plot inside ui
+
+tabPanel("Violinplot",
+    # Application title
+    titlePanel("PLACEHOLDER"),
+    # Show a plot of the generated distribution
+    sidebarLayout(
+      sidebarPanel(
+        #violin variables
+        sliderInput("violinUniqSharedInput", "Unique Shared", min = min(DATA$Uniq_Shared), 
+                    max = max(DATA$Uniq_Shared), value = c(min(DATA$Uniq_Shared), max(DATA$Uniq_Shared))),
+        checkboxGroupInput("violinModernPopInput", "Modern Populations", choices = unique(DATA$Modern_pop), 
+                           selected = unique(DATA$Modern_pop)),
+        checkboxGroupInput("violinArchaicPopInput", "Archaic Populations", choices = unique(DATA$Archaic_pop), 
+                           selected = unique(DATA$Archaic_pop))
+      ),
+      mainPanel(
+        #heatmap
+        plotOutput("violinPlot"),
+        dataTableOutput("violinResults")
+      )
+    )
+  )
+
+#Part of the violin plot inside server
+
+output$violinPlot <- renderPlot({
+    violinFiltered <- DATA %>% filter(
+      Uniq_Shared >= input$violinUniqSharedInput[1],
+      Uniq_Shared <= input$violinUniqSharedInput[2],
+      Modern_pop %in% input$violinModernPopInput,
+      Archaic_pop %in% input$violinArchaicPopInput
+      
+    )
+
+    ggplot(data = violinFiltered, mapping = aes(x = Modern_pop, y = Uniq_Shared)) + geom_jitter(mapping = aes(colour = Archaic_pop)) + 
+      geom_violin(alpha = 0.4) + scale_colour_viridis_d("Archaic Population", labels = violinFiltered$Archaic_pop) + 
+      labs(xlab = "Modern population", ylab = "Uniquely shared", title = "Uniquely shared alleles in modern populations") + 
+      theme_classic() + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  })
+  output$violinResults <- renderDataTable({
+    violinFiltered <- DATA %>% filter(
+      Uniq_Shared >= input$violinUniqSharedInput[1],
+      Uniq_Shared <= input$violinUniqSharedInput[2],
+      Modern_pop %in% input$violinModernPopInput,
+      Archaic_pop %in% input$violinArchaicPopInput
+    )
+    violinFiltered
+  })
+
+```
+
+
+As in the other graphs we decided to add some htmlwidgets to allow the user to set a threshold for the number of uniquely shared alleles or to select certain populations just in case he wants to do a more specific analysis in the data.
+
+
+#Final shiny app
+
+On our first execution of our shiny app we found out that having all our plots piled up made the interface look messy and difficult to navigate, that's why we decided to put each graph in it's own window. The final result is this one:
+
+```{r, eval=TRUE, runtime: shiny}
+
+# This is a Shiny web application. You can run the application by clicking
+# the 'Run App' button above.
+#
+# Find out more about building applications with Shiny here:
+#
+#    http://shiny.rstudio.com/
+#
+
+library(readxl)
+library(dplyr)
+library(tidyr)
+library(viridis)
+library(ggplot2)
+DATA <- read_excel("TableS3_excelfile.xlsx")
+DATA <- DATA %>% separate(`Chr:Start-End`, c("Chr", "Start", "End"))
+chrOrder <-c("chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19", "chr20", "chr21", "chr22", "chrM", "chrY", "chrX")
+DATA$Chr = factor(DATA$Chr, levels = chrOrder, ordered = TRUE)
+DATA$Mode = factor(DATA$Mode)
+DATA$Modern_pop = factor(DATA$Modern_pop)
+DATA$Archaic_pop = factor(DATA$Archaic_pop)
+DATA$Chr = factor(DATA$Chr)
+DATA$Genes = factor(DATA$Genes)
+DATA$Lit_overlap = factor(DATA$Lit_overlap)
+
+# Define UI for application that draws a histogram
+ui <- navbarPage("Project", inverse = TRUE,
+  tabPanel("Barplot",
+    titlePanel("PLACEHOLDER"),
+    sidebarLayout(
+      sidebarPanel(
+        #Barplot variables
+        checkboxGroupInput("Chr_inp", "Barplot_chromosome_input", choices = unique(DATA$Chr), selected = unique(DATA$Chr)),
+        sliderInput("count_barplot", "Maximum count and minimum count", min = 0,max = 250, value = c(0, 250)),
+        radioButtons("Bar_color_scheme", "Barplot Color scheme", choices = c("Accent", "Set3", "Spectral", "Set1", "Dark2", "Paired",
+                                                                            "mako", "OrRd", "Pastel1"), selected = "Pastel1")
+        ),
+      mainPanel(
+        plotOutput("Barplot", click = "click_action"),tableOutput("click_info")
+      )
+    )
+  ),
+  tabPanel("Heatmap",
+    titlePanel("PLACEHOLDER"),
+    sidebarLayout(
+      sidebarPanel(
+        radioButtons("heatmapColorscheme", "Color scheme", choices = c("magma", "inferno", "plasma", "viridis", "cividis", "rocket",
+                                                                       "mako", "turbo"), selected = "viridis"),
+        checkboxGroupInput("heatmapModeInput", "Continents", choices = unique(DATA$Mode), selected = unique(DATA$Mode)),
+        checkboxGroupInput("heatmapModernPopInput", "Modern Populations", choices = unique(DATA$Modern_pop), 
+                           selected = unique(DATA$Modern_pop)),
+        checkboxGroupInput("heatmapArchaicPopInput", "Archaic Populations", choices = unique(DATA$Archaic_pop), 
+                           selected = unique(DATA$Archaic_pop))
+      ),
+      mainPanel(
+        plotOutput("heatmapPlot"),
+        dataTableOutput("heatmapResults")
+      )
+    )
+  ),
+  tabPanel("Violinplot",
+    titlePanel("PLACEHOLDER"),
+    sidebarLayout(
+      sidebarPanel(
+        #violin variables
+        sliderInput("violinUniqSharedInput", "Unique Shared", min = min(DATA$Uniq_Shared), 
+                    max = max(DATA$Uniq_Shared), value = c(min(DATA$Uniq_Shared), max(DATA$Uniq_Shared))),
+        checkboxGroupInput("violinModernPopInput", "Modern Populations", choices = unique(DATA$Modern_pop), 
+                           selected = unique(DATA$Modern_pop)),
+        checkboxGroupInput("violinArchaicPopInput", "Archaic Populations", choices = unique(DATA$Archaic_pop), 
+                           selected = unique(DATA$Archaic_pop))
+      ),
+      mainPanel(
+        #heatmap
+        plotOutput("violinPlot"),
+        dataTableOutput("violinResults")
+      )
+    )
+  )
+)
+
+# Define server logic required to draw a histogram
+server <- function(input, output) {
+  
+  # HEATMAP PLOT
+  output$heatmapPlot <- renderPlot({
+    heatmapFiltered <- DATA %>% filter(
+      Mode %in% input$heatmapModeInput,
+      Modern_pop %in% input$heatmapModernPopInput,
+      Archaic_pop %in% input$heatmapArchaicPopInput
+    )
+    
+    ggplot(data = heatmapFiltered, aes(x = Archaic_pop, y = Modern_pop)) + geom_bin2d() + 
+      facet_grid(cols = vars(Mode), scales = "free") + theme(panel.grid.major.x = element_blank()) + 
+      xlab("Archaic population") + ylab("Modern population") + scale_fill_viridis("Amount", option = input$heatmapColorscheme)
+  })
+  
+  output$heatmapResults <- renderDataTable({
+    heatmapFiltered <- DATA %>% filter(
+      Mode %in% input$heatmapModeInput,
+      Modern_pop %in% input$heatmapModernPopInput,
+      Archaic_pop %in% input$heatmapArchaicPopInput
+    )
+    heatmapFiltered
+  })
+  
+  # VIOLIN PLOT
+  output$violinPlot <- renderPlot({
+    violinFiltered <- DATA %>% filter(
+      Uniq_Shared >= input$violinUniqSharedInput[1],
+      Uniq_Shared <= input$violinUniqSharedInput[2],
+      Modern_pop %in% input$violinModernPopInput,
+      Archaic_pop %in% input$violinArchaicPopInput
+      
+    )
+    ggplot(data = violinFiltered, mapping = aes(x = Modern_pop, y = Uniq_Shared)) + geom_jitter(mapping = aes(colour = Archaic_pop)) + 
+      geom_violin(alpha = 0.4) + scale_colour_viridis_d("Archaic Population", labels = violinFiltered$Archaic_pop) + 
+      labs(xlab = "Modern population", ylab = "Uniquely shared", title = "Uniquely shared alleles in modern populations") + 
+      theme_classic() + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  })
+  output$violinResults <- renderDataTable({
+    violinFiltered <- DATA %>% filter(
+      Uniq_Shared >= input$violinUniqSharedInput[1],
+      Uniq_Shared <= input$violinUniqSharedInput[2],
+      Modern_pop %in% input$violinModernPopInput,
+      Archaic_pop %in% input$violinArchaicPopInput
+    )
+    violinFiltered
+  })
+  
+  #BARPLOT
+  output$Barplot <- renderPlot({
+    B_data <- DATA %>% filter(Chr %in% input$Chr_inp, 
+                              Chr %in% names(which(table(Chr) >= input$count_barplot[1])), 
+                              Chr %in% names(which(table(Chr) <= input$count_barplot[2])))
+    ggplot(data = B_data, mapping = aes(x = Chr, fill = Archaic_pop)) + geom_bar() + 
+      geom_text(mapping = aes(label = ..count..),position = position_stack(vjust = 0.5), colour = "black", stat = "count") + coord_flip() + 
+      labs(title = "Samples for each chromosome", x = "Chromosome") + scale_fill_brewer(name = "Archaic population", 
+                                                                                        labels = c("Both", "Denisova-specific","Neanderthal-specific"), palette = input$Bar_color_scheme) + theme_classic()})
+  
+  output$click_info <- renderTable({
+    if(is.null(input$click_action$x)){
+      return()
+    }
+    else{
+      selected_level <- levels(DATA$Chr)[round(input$click_action$y)]
+      
+      res <- DATA[DATA$Chr %in% selected_level,]
+      res
+    }
+  })
+  
+}
+
+# Run the application 
+shinyApp(ui = ui, server = server)
+
+```
+
