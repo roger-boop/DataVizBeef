@@ -583,14 +583,8 @@ specific analysis in the data.</p>
 our plots piled up made the interface look messy and difficult to
 navigate, that’s why we decided to put each graph in it’s own window.
 The final result is this one:</p>
-<pre class="r"><code># This is a Shiny web application. You can run the application by clicking
-# the &#39;Run App&#39; button above.
-#
-# Find out more about building applications with Shiny here:
-#
-#    http://shiny.rstudio.com/
-#
-
+<pre class="r"><code># This is the shiny web app, it is structured in three tabs with a sidebar
+# and main panel each.
 library(readxl)
 library(dplyr)
 library(tidyr)
@@ -603,38 +597,40 @@ DATA$Chr = factor(DATA$Chr, levels = chrOrder, ordered = TRUE)
 DATA$Mode = factor(DATA$Mode)
 DATA$Modern_pop = factor(DATA$Modern_pop)
 DATA$Archaic_pop = factor(DATA$Archaic_pop)
-DATA$Chr = factor(DATA$Chr)
 DATA$Genes = factor(DATA$Genes)
 DATA$Lit_overlap = factor(DATA$Lit_overlap)
 
 # Define UI for application that draws a histogram
-ui &lt;- navbarPage(&quot;Project&quot;, inverse = TRUE,
-  tabPanel(&quot;Barplot&quot;,
-    titlePanel(&quot;PLACEHOLDER&quot;),
+ui &lt;- navbarPage(&quot;Project&quot;, inverse = T,
+  tabPanel(&quot;Samples for each chromosome - Barplot&quot;,
+    titlePanel(&quot;Samples for each chromosome&quot;),
     sidebarLayout(
       sidebarPanel(
-        #Barplot variables
-        checkboxGroupInput(&quot;Chr_inp&quot;, &quot;Barplot_chromosome_input&quot;, choices = unique(DATA$Chr), selected = unique(DATA$Chr)),
+        checkboxGroupInput(&quot;Chr_inp&quot;, &quot;Barplot chromosome input&quot;, choices = unique(DATA$Chr), selected = unique(DATA$Chr)),
         sliderInput(&quot;count_barplot&quot;, &quot;Maximum count and minimum count&quot;, min = 0,max = 250, value = c(0, 250)),
         radioButtons(&quot;Bar_color_scheme&quot;, &quot;Barplot Color scheme&quot;, choices = c(&quot;Accent&quot;, &quot;Set3&quot;, &quot;Spectral&quot;, &quot;Set1&quot;, &quot;Dark2&quot;, &quot;Paired&quot;,
                                                                             &quot;mako&quot;, &quot;OrRd&quot;, &quot;Pastel1&quot;), selected = &quot;Pastel1&quot;)
         ),
       mainPanel(
-        plotOutput(&quot;Barplot&quot;, click = &quot;click_action&quot;),tableOutput(&quot;click_info&quot;)
+        plotOutput(&quot;Barplot&quot;, click = &quot;click_action&quot;),
+        br(),
+        h3(&quot;Click on a Bar of the plot!&quot;),
+        br(),
+        tableOutput(&quot;click_info&quot;)
       )
     )
   ),
-  tabPanel(&quot;Heatmap&quot;,
-    titlePanel(&quot;PLACEHOLDER&quot;),
+  tabPanel(&quot;Amount of samples - Heatmap&quot;,
+    titlePanel(&quot;Amount of samples&quot;),
     sidebarLayout(
       sidebarPanel(
         radioButtons(&quot;heatmapColorscheme&quot;, &quot;Color scheme&quot;, choices = c(&quot;magma&quot;, &quot;inferno&quot;, &quot;plasma&quot;, &quot;viridis&quot;, &quot;cividis&quot;, &quot;rocket&quot;,
                                                                        &quot;mako&quot;, &quot;turbo&quot;), selected = &quot;viridis&quot;),
         checkboxGroupInput(&quot;heatmapModeInput&quot;, &quot;Continents&quot;, choices = unique(DATA$Mode), selected = unique(DATA$Mode)),
-        checkboxGroupInput(&quot;heatmapModernPopInput&quot;, &quot;Modern Populations&quot;, choices = unique(DATA$Modern_pop), 
-                           selected = unique(DATA$Modern_pop)),
         checkboxGroupInput(&quot;heatmapArchaicPopInput&quot;, &quot;Archaic Populations&quot;, choices = unique(DATA$Archaic_pop), 
-                           selected = unique(DATA$Archaic_pop))
+                           selected = unique(DATA$Archaic_pop)),
+        checkboxGroupInput(&quot;heatmapModernPopInput&quot;, &quot;Modern Populations&quot;, choices = unique(DATA$Modern_pop), 
+                           selected = unique(DATA$Modern_pop))
       ),
       mainPanel(
         plotOutput(&quot;heatmapPlot&quot;),
@@ -642,20 +638,18 @@ ui &lt;- navbarPage(&quot;Project&quot;, inverse = TRUE,
       )
     )
   ),
-  tabPanel(&quot;Violinplot&quot;,
-    titlePanel(&quot;PLACEHOLDER&quot;),
+  tabPanel(&quot;Uniquely shared aleles - Violin plot&quot;,
+    titlePanel(&quot;Uniquely shared aleles&quot;),
     sidebarLayout(
       sidebarPanel(
-        #violin variables
         sliderInput(&quot;violinUniqSharedInput&quot;, &quot;Unique Shared&quot;, min = min(DATA$Uniq_Shared), 
                     max = max(DATA$Uniq_Shared), value = c(min(DATA$Uniq_Shared), max(DATA$Uniq_Shared))),
-        checkboxGroupInput(&quot;violinModernPopInput&quot;, &quot;Modern Populations&quot;, choices = unique(DATA$Modern_pop), 
-                           selected = unique(DATA$Modern_pop)),
         checkboxGroupInput(&quot;violinArchaicPopInput&quot;, &quot;Archaic Populations&quot;, choices = unique(DATA$Archaic_pop), 
-                           selected = unique(DATA$Archaic_pop))
+                           selected = unique(DATA$Archaic_pop)),
+        checkboxGroupInput(&quot;violinModernPopInput&quot;, &quot;Modern Populations&quot;, choices = unique(DATA$Modern_pop), 
+                           selected = unique(DATA$Modern_pop))
       ),
       mainPanel(
-        #heatmap
         plotOutput(&quot;violinPlot&quot;),
         dataTableOutput(&quot;violinResults&quot;)
       )
@@ -665,7 +659,6 @@ ui &lt;- navbarPage(&quot;Project&quot;, inverse = TRUE,
 
 # Define server logic required to draw a histogram
 server &lt;- function(input, output) {
-  
   # HEATMAP PLOT
   output$heatmapPlot &lt;- renderPlot({
     heatmapFiltered &lt;- DATA %&gt;% filter(
