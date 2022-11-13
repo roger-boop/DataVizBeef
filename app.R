@@ -1,12 +1,5 @@
-#
-# This is a Shiny web application. You can run the application by clicking
-# the 'Run App' button above.
-#
-# Find out more about building applications with Shiny here:
-#
-#    http://shiny.rstudio.com/
-#
-
+# This is the shiny web app, it is structured in three tabs with a sidebar
+# and main panel each.
 library(readxl)
 library(dplyr)
 library(tidyr)
@@ -19,65 +12,59 @@ DATA$Chr = factor(DATA$Chr, levels = chrOrder, ordered = TRUE)
 DATA$Mode = factor(DATA$Mode)
 DATA$Modern_pop = factor(DATA$Modern_pop)
 DATA$Archaic_pop = factor(DATA$Archaic_pop)
-DATA$Chr = factor(DATA$Chr)
 DATA$Genes = factor(DATA$Genes)
 DATA$Lit_overlap = factor(DATA$Lit_overlap)
 
 # Define UI for application that draws a histogram
-ui <- navbarPage("Project", inverse = TRUE,
-  tabPanel("Barplot",
-    titlePanel("PLACEHOLDER"),
+ui <- navbarPage("Project", inverse = T,
+  tabPanel("Samples for each chromosome - Barplot",
+    titlePanel("Samples for each chromosome"),
     sidebarLayout(
       sidebarPanel(
-        #Barplot variables
-        checkboxGroupInput("Chr_inp", "Barplot_chromosome_input", choices = unique(DATA$Chr), selected = unique(DATA$Chr)),
+        checkboxGroupInput("Chr_inp", "Barplot chromosome input", choices = unique(DATA$Chr), selected = unique(DATA$Chr)),
         sliderInput("count_barplot", "Maximum count and minimum count", min = 0,max = 250, value = c(0, 250)),
         radioButtons("Bar_color_scheme", "Barplot Color scheme", choices = c("Accent", "Set3", "Spectral", "Set1", "Dark2", "Paired",
                                                                             "mako", "OrRd", "Pastel1"), selected = "Pastel1")
         ),
       mainPanel(
-        plotOutput("Barplot", click = "click_action"),tableOutput("click_info")
+        plotOutput("Barplot", click = "click_action"),
+        br(),
+        h3("Click on a Bar of the plot!"),
+        br(),
+        tableOutput("click_info")
       )
     )
   ),
-  tabPanel("Heatmap",
-    # Application title
-    titlePanel("PLACEHOLDER"),
-    # Show a plot of the generated distribution
+  tabPanel("Amount of samples - Heatmap",
+    titlePanel("Amount of samples"),
     sidebarLayout(
       sidebarPanel(
-        #heatmap variables
         radioButtons("heatmapColorscheme", "Color scheme", choices = c("magma", "inferno", "plasma", "viridis", "cividis", "rocket",
                                                                        "mako", "turbo"), selected = "viridis"),
         checkboxGroupInput("heatmapModeInput", "Continents", choices = unique(DATA$Mode), selected = unique(DATA$Mode)),
-        checkboxGroupInput("heatmapModernPopInput", "Modern Populations", choices = unique(DATA$Modern_pop), 
-                           selected = unique(DATA$Modern_pop)),
         checkboxGroupInput("heatmapArchaicPopInput", "Archaic Populations", choices = unique(DATA$Archaic_pop), 
-                           selected = unique(DATA$Archaic_pop))
+                           selected = unique(DATA$Archaic_pop)),
+        checkboxGroupInput("heatmapModernPopInput", "Modern Populations", choices = unique(DATA$Modern_pop), 
+                           selected = unique(DATA$Modern_pop))
       ),
       mainPanel(
-        #heatmap
         plotOutput("heatmapPlot"),
         dataTableOutput("heatmapResults")
       )
     )
   ),
-  tabPanel("Violinplot",
-    # Application title
-    titlePanel("PLACEHOLDER"),
-    # Show a plot of the generated distribution
+  tabPanel("Uniquely shared aleles - Violin plot",
+    titlePanel("Uniquely shared aleles"),
     sidebarLayout(
       sidebarPanel(
-        #violin variables
         sliderInput("violinUniqSharedInput", "Unique Shared", min = min(DATA$Uniq_Shared), 
                     max = max(DATA$Uniq_Shared), value = c(min(DATA$Uniq_Shared), max(DATA$Uniq_Shared))),
-        checkboxGroupInput("violinModernPopInput", "Modern Populations", choices = unique(DATA$Modern_pop), 
-                           selected = unique(DATA$Modern_pop)),
         checkboxGroupInput("violinArchaicPopInput", "Archaic Populations", choices = unique(DATA$Archaic_pop), 
-                           selected = unique(DATA$Archaic_pop))
+                           selected = unique(DATA$Archaic_pop)),
+        checkboxGroupInput("violinModernPopInput", "Modern Populations", choices = unique(DATA$Modern_pop), 
+                           selected = unique(DATA$Modern_pop))
       ),
       mainPanel(
-        #heatmap
         plotOutput("violinPlot"),
         dataTableOutput("violinResults")
       )
@@ -87,11 +74,7 @@ ui <- navbarPage("Project", inverse = TRUE,
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
-  
   # HEATMAP PLOT
-  
-  
-  #TODO: hacer que al pasar el raton por encima del heatmap salga info
   output$heatmapPlot <- renderPlot({
     heatmapFiltered <- DATA %>% filter(
       Mode %in% input$heatmapModeInput,
@@ -114,8 +97,6 @@ server <- function(input, output) {
   })
   
   # VIOLIN PLOT
-  
-  #TODO: haver que al pasar el raton por los puntos salga info
   output$violinPlot <- renderPlot({
     violinFiltered <- DATA %>% filter(
       Uniq_Shared >= input$violinUniqSharedInput[1],
@@ -124,7 +105,6 @@ server <- function(input, output) {
       Archaic_pop %in% input$violinArchaicPopInput
       
     )
-    # FIX: LOS LABELS DE ARCHAIC SIEMPRE SON NEA (NOSE PORQUE)
     ggplot(data = violinFiltered, mapping = aes(x = Modern_pop, y = Uniq_Shared)) + geom_jitter(mapping = aes(colour = Archaic_pop)) + 
       geom_violin(alpha = 0.4) + scale_colour_viridis_d("Archaic Population", labels = violinFiltered$Archaic_pop) + 
       labs(xlab = "Modern population", ylab = "Uniquely shared", title = "Uniquely shared alleles in modern populations") + 
