@@ -30,11 +30,11 @@ ui <- fluidPage(
         sidebarPanel(
           # TODO: ponerle texto al sidebar para que quede claro que inputs corresponden a que plots
           #Barplot variables
-          checkboxGroupInput("Chr_inp", "Barplot_chromosome_input", choices = unique(DATA$Chr), selected = unique(DATA$Chr)),br(),br(),
+          checkboxGroupInput("Chr_inp", "Barplot_chromosome_input", choices = unique(DATA$Chr), selected = unique(DATA$Chr)),
           sliderInput("count_barplot", "Maximum count and minimum count", min = 0,max = 250, value = c(0, 250)),
           radioButtons("Bar_color_scheme", "Barplot Color scheme", choices = c("Accent", "Set3", "Spectral", "Set1", "Dark2", "Paired",
                                                                          "mako", "OrRd", "Pastel1"), selected = "Pastel1"),
-          
+          br(),br(),
           #heatmap variables
           radioButtons("heatmapColorscheme", "Color scheme", choices = c("magma", "inferno", "plasma", "viridis", "cividis", "rocket",
                                                                          "mako", "turbo"), selected = "viridis"),
@@ -126,8 +126,12 @@ server <- function(input, output) {
     
     #BARPLOT
     output$Barplot <- renderPlot({
-      B_data <- DATA %>% filter(Chr %in% input$Chr_inp, Chr %in% names(which(table(Chr) >= input$count_barplot[1])), Chr %in% names(which(table(Chr) <= input$count_barplot[2])))
-      ggplot(data = B_data, mapping = aes(x = Chr, fill = Archaic_pop)) + geom_bar() + geom_text(mapping = aes(label = ..count..),position = position_stack(vjust = 0.5), colour = "black", stat = "count") + coord_flip() + labs(title = "Samples for each chromosome", x = "Chromosome") + scale_fill_brewer(name = "Archaic population", 
+      B_data <- DATA %>% filter(Chr %in% input$Chr_inp, 
+                                Chr %in% names(which(table(Chr) >= input$count_barplot[1])), 
+                                Chr %in% names(which(table(Chr) <= input$count_barplot[2])))
+      ggplot(data = B_data, mapping = aes(x = Chr, fill = Archaic_pop)) + geom_bar() + 
+        geom_text(mapping = aes(label = ..count..),position = position_stack(vjust = 0.5), colour = "black", stat = "count") + coord_flip() + 
+        labs(title = "Samples for each chromosome", x = "Chromosome") + scale_fill_brewer(name = "Archaic population", 
                           labels = c("Both", "Denisova-specific","Neanderthal-specific"), palette = input$Bar_color_scheme) + theme_classic()})
     
     output$click_info <- renderTable({
