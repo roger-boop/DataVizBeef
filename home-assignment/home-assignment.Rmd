@@ -1,0 +1,67 @@
+---
+title: "home-assignment"
+author: "authors"
+date: "2022-11-16"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Q1
+
+An easy way to load the data is with `read.table()`
+
+```{r q1-loads}
+P3 <- read.table('P3.tsv', header = TRUE)
+P4 <- read.table('P4.tsv', header = TRUE)
+P5 <- read.table('P5.tsv', header = TRUE)
+```
+
+Here are some other ways to load data...
+
+```{r q1-loads-alt}
+# TODO: provide code alternatives...
+```
+
+We can show the data is loaded by performing `head()` on them, which will print out the first few lines of the dataframe.
+
+```{r q1-evidence}
+head(P3)
+head(P4)
+head(P5)
+```
+
+Let's also add extra information to the datasets, indicating where the samples came from.
+
+```{r q1-addsamples}
+#TODO: afegir a cada cellname d'on prove (P3, P4 o P5)
+```
+
+## Q2
+
+We can use the `read.table()` command again. Let's also split the *label* column in *celltypes* and *conditions*.
+
+```{r q2-packages, message=FALSE}
+library(dplyr)
+library(tidyr)
+```
+
+```{r q2-load}
+treatments <- read.table('samplesheet.tsv', header = TRUE)
+
+treatments <- treatments %>% separate(col = label, into = c("celltypes", "conditions"), sep = "\\+")
+```
+
+Now, let's check the number of conditions. 
+
+```{r q2-cond}
+table(treatments$conditions)
+```
+
+We can also see the amount of cell types in each condition.
+
+```{r q2-cellconds}
+table(treatments$conditions, treatments$celltypes)
+```
