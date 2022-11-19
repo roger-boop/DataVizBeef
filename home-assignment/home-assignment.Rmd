@@ -76,20 +76,20 @@ head(P5_5)
 Having the samples as rownames and the genes as column names will make our data more intuitive to work with, that is why we will transpose our tables.
 
 ```{r q1-transpose_matrix}
+rownames(P3) <- P3$gene
+P3$gene <- NULL
+rownames(P4) <- P4$gene
+P4$gene <- NULL
+rownames(P5) <- P5$gene
+P5$gene <- NULL
+
 P3 <- t(P3)
 P4 <- t(P4)
 P5 <- t(P5)
-
-colnames(P3) <- P3[1,]
-P3 <- P3[-1,]
-
-colnames(P4) <- P4[1,]
-P4 <- P4[-1,]
-
-colnames(P5) <- P5[1,]
-P5 <- P5[-1,]
 ```
 
+
+NOTA: Esto no hace falta. He puesto los replicates en el dataframe de treatment. borrar?
 Finally we will create 3 dataframes for P3, P4 and P5 respectively containing the information already stored in those tables and an extra column indicating from which experiment the sample comes from(P3, P4 or P5). This will be useful in case we have to bind all of this dataframes into one later on.
 
 ```{r q1-addsamples}
@@ -125,10 +125,11 @@ We can also see the amount of cell types in each condition.
 table(treatments$conditions, treatments$celltypes)
 ```
 
-In order to determine whether or not we have to record cell names we will check if the indexes for each cell match in the tsv files and in treatments. If they do then we can remove them since we will already know which cell each column is referring to by bindimg the data with the tsv files, otherwise we will have to record it.
+In order to determine whether or not we have to record cell names we will check if the indexes for each cell match in the tsv files and in treatments. If they do then we can remove them since we will already know which cell each column is referring to by binding the data with the tsv files, otherwise we will have to record it.
 
 ```{r q3-record_cell_or_not}
 treatments$cellnames == cbind(rownames(P3), rownames(P4), rownames(P5))
+treatments$replicates <- append(append(rep("P3", 96), rep("P4",96)), rep("P5", 96))
 ```
 
 We can see the index of the cells is the same in both treatments and the tsv files, therefore we don't have to record those names.
@@ -136,6 +137,119 @@ We can see the index of the cells is the same in both treatments and the tsv fil
 To end this exercise we will create a data frame with all the information obtained till now.
 
 ```{r final_data}
-X <- rbind(P3_dat, P4_dat, P5_dat)
+X <- rbind(P3, P4, P5)
 X_def <- data.frame(X,  treatments[,2:ncol(treatments)])
 ```
+
+## Q3
+
+```{r scaling}
+#first, remove columns with all zeroes
+X_nozero <- X[, colSums(X)>0]
+#next, normalize the dataframe by dividing each value
+#by the sum of its row
+Y = X_nozero/rowSums(X_nozero)
+```
+
+```{r first-pca}
+#pca <- stats::prcomp(X)
+pca_normalized <- stats::prcomp(Y, scale = TRUE)
+```
+
+```{r libraries}
+library(ggplot2)
+library(Rtsne)
+```
+
+```{r pca-plot-no-normalized}
+components <- as_tibble(pca$x) %>% bind_cols(treatments) %>% as.data.frame()
+ggplot(components, aes(x = PC1, y = PC2, color = replicates)) + geom_point() + theme_light() + labs(color = "Replicate", title = "PCA non-normalized")
+```
+
+There is a clear batch effect, mostly among the P3 replicate, as they are mostly clustered away from the P4 and P5 clusters.
+
+```{r pca-plot-normalized}
+components <- as_tibble(pca_normalized$x) %>% bind_cols(treatments) %>% as.data.frame()
+ggplot(components, aes(x = PC1, y = PC2, color = replicates)) + geom_point() + theme_light() + labs(color = "Replicates", title = "PCA normalized")
+```
+
+This might have solved the batch effect, but there is 1 huge outlier along the PC1 in our data. Let's remove it.
+
+```{r remove-outlier}
+#identify the outlier
+my.tibble <- as_tibble(pca_normalized$x)
+#we see in the output there is a huge outlier, so let's remove it
+my.tibble$PC1
+#this outlier is in position 220, remove it from the pca and the treatments
+my.tibble <- my.tibble[my.tibble$PC1>(-400),]
+treatments_no_outlier <- treatments[-220,]
+```
+
+```{r pca-normalized-no-outlier}
+components <- my.tibble %>% bind_cols(treatments_no_outlier) %>% as.data.frame()
+ggplot(components, aes(x = PC1, y = PC2, color = replicates)) + geom_point() + theme_light() + labs(color = "Replicates", title = "PCA normalized")
+```
+
+The outlier is gone, and we can clearly differentiate the clusters. The batch effect is also clearly gone compared to the non-scaled, non-normalized PCA. Let's do some tSNEs.
+
+```{r tsnes}
+X_tsne <- Rtsne(X)
+Y_tsne <- Rtsne(Y)
+```
+
+```{r tsne-non-normalized}
+tsne_plot <- data.frame(x = X_tsne$Y[,1], 
+                        y = X_tsne$Y[,2], 
+                        col = treatments$replicates,
+                        sha = treatments$conditions,
+                        alp = treatments$celltypes)
+ggplot(tsne_plot) + geom_point(aes(x=x, y=y, color=col)) + theme_light() + labs(color = "Replicates", title = "tSNE non-normalized")
+```
+
+There is some clear batch effect once again. Let's remove it by plotting the normalized data.
+
+```{r tsne-normalized}
+tsne_plot <- data.frame(x = Y_tsne$Y[,1], 
+                        y = Y_tsne$Y[,2], 
+                        col = treatments$replicates,
+                        sha = treatments$conditions,
+                        alp = treatments$celltypes)
+ggplot(tsne_plot) + geom_point(aes(x=x, y=y, color=col)) + theme_light() + labs(color = "Replicates", title = "tSNE normalized") 
+```
+
+## Q4
+
+Let's try to change the perplexity parameter and see how it affects the data.
+
+```{r perplex}
+for (i in c(3, 60, 70))
+{
+  i_tsne <- Rtsne(Y, perplexity = i)
+  tsne_plot <- data.frame(x = i_tsne$Y[,1], 
+                        y = i_tsne$Y[,2], 
+                        col = treatments$replicates,
+                        sha = treatments$conditions,
+                        alp = treatments$celltypes)
+  print(ggplot(tsne_plot) + geom_point(aes(x=x, y=y, color=col)) + theme_light() + labs(color = "Replicates", title = paste0("tSNE for perplexity = ", i)))
+}
+```
+
+The perplexity changes the number of neightbors that each cluster should have. For perplexity = 3, the clusters only have 3 neighbors, so the clusters are tiny. It's good to have a high perplexity, as high as possible. 
+
+
+Let's try changing the iterations now.
+
+```{r iter}
+for (i in c(5, 500, 2000))
+{
+  i_tsne <- Rtsne(Y, max_iter = i)
+  tsne_plot <- data.frame(x = i_tsne$Y[,1], 
+                        y = i_tsne$Y[,2], 
+                        col = treatments$replicates,
+                        sha = treatments$conditions,
+                        alp = treatments$celltypes)
+  print(ggplot(tsne_plot) + geom_point(aes(x=x, y=y, color=col)) + theme_light() + labs(color = "Replicates", title = paste0("tSNE for iterations = ", i)))
+}
+```
+
+A lower number of iterations leads to one singular big cluster. The more iterations, the more distinct the clusters are. A higher number is better in this case.
