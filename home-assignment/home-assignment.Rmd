@@ -136,6 +136,6 @@ We can see the index of the cells is the same in both treatments and the tsv fil
 To end this exercise we will create a data frame with all the information obtained till now.
 
 ```{r final_data}
-X <- rbind(P3, P4, P5)
+X <- rbind(P3_dat, P4_dat, P5_dat)
 X_def <- data.frame(X,  treatments[,2:ncol(treatments)])
 ```
