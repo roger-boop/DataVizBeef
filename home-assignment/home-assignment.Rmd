@@ -19,24 +19,83 @@ P4 <- read.table('P4.tsv', header = TRUE)
 P5 <- read.table('P5.tsv', header = TRUE)
 ```
 
-Here are some other ways to load data...
+The method used above requires us to uncompress the data, which might not be a good idea when working with large files, that is why we will use the gfile() function to avoid this problem.
 
 ```{r q1-loads-alt}
-# TODO: provide code alternatives...
+P3_2 <- read.table(gzfile("P3.tsv.gz"), header = TRUE)
+P4_2 <- read.table(gzfile("P4.tsv.gz"), header = TRUE)
+P5_2 <- read.table(gzfile("P5.tsv.gz"), header = TRUE)
+```
+
+Another way of loading the data is to use read_tsv, a function specialized in loading tsv files into R.
+
+```{r q1-loads-alt2}
+library(readr)
+P3_3 <- read_tsv(gzfile("P3.tsv.gz"), col_names = TRUE)
+P4_3 <- read_tsv(gzfile("P4.tsv.gz"), col_names = TRUE)
+P5_3 <- read_tsv(gzfile("P5.tsv.gz"), col_names = TRUE)
+```
+
+We could also treat our data like a csv file and load it into R using read_csv. In this case we must specify that each column is separated by a tab in order to prevent the function of returning a table with just one column.
+
+```{r}
+P3_4 <- read.csv(gzfile("P3.tsv.gz"), header = TRUE, sep = "\t")
+P4_4 <- read.csv(gzfile("P4.tsv.gz"), header = TRUE, sep = "\t")
+P5_4 <- read.csv(gzfile("P5.tsv.gz"), header = TRUE, sep = "\t")
+```
+
+Finally we can take advantage of the fact that tsv files are delimited text files to load our data using read.delim.
+
+```{r}
+P3_5 <- read.delim(gzfile("P3.tsv.gz"), header = TRUE)
+P4_5 <- read.delim(gzfile("P4.tsv.gz"), header = TRUE)
+P5_5 <- read.delim(gzfile("P5.tsv.gz"), header = TRUE)
 ```
 
 We can show the data is loaded by performing `head()` on them, which will print out the first few lines of the dataframe.
 
 ```{r q1-evidence}
+#Data loaded with read.table
 head(P3)
 head(P4)
 head(P5)
+#Data loaded with read_tsv
+head(P3_3)
+head(P4_3)
+head(P5_3)
+#Data loaded with read.csv
+head(P3_4)
+head(P4_4)
+head(P5_4)
+#Data loaded with read.delim
+head(P3_5)
+head(P4_5)
+head(P5_5)
 ```
 
-Let's also add extra information to the datasets, indicating where the samples came from.
+Having the samples as rownames and the genes as column names will make our data more intuitive to work with, that is why we will transpose our tables.
+
+```{r q1-transpose_matrix}
+P3 <- t(P3)
+P4 <- t(P4)
+P5 <- t(P5)
+
+colnames(P3) <- P3[1,]
+P3 <- P3[-1,]
+
+colnames(P4) <- P4[1,]
+P4 <- P4[-1,]
+
+colnames(P5) <- P5[1,]
+P5 <- P5[-1,]
+```
+
+Finally we will create 3 dataframes for P3, P4 and P5 respectively containing the information already stored in those tables and an extra column indicating from which experiment the sample comes from(P3, P4 or P5). This will be useful in case we have to bind all of this dataframes into one later on.
 
 ```{r q1-addsamples}
-#TODO: afegir a cada cellname d'on prove (P3, P4 o P5)
+P3_dat <- data.frame(P3, origin = rep("P3", nrow(P3)))
+P4_dat <- data.frame(P4, origin = rep("P4", nrow(P4)))
+P5_dat <- data.frame(P5, origin = rep("P5", nrow(P5)))
 ```
 
 ## Q2
@@ -64,4 +123,19 @@ We can also see the amount of cell types in each condition.
 
 ```{r q2-cellconds}
 table(treatments$conditions, treatments$celltypes)
+```
+
+In order to determine whether or not we have to record cell names we will check if the indexes for each cell match in the tsv files and in treatments. If they do then we can remove them since we will already know which cell each column is referring to by bindimg the data with the tsv files, otherwise we will have to record it.
+
+```{r q3-record_cell_or_not}
+treatments$cellnames == cbind(rownames(P3), rownames(P4), rownames(P5))
+```
+
+We can see the index of the cells is the same in both treatments and the tsv files, therefore we don't have to record those names.
+
+To end this exercise we will create a data frame with all the information obtained till now.
+
+```{r final_data}
+X <- rbind(P3, P4, P5)
+X_def <- data.frame(X,  treatments[,2:ncol(treatments)])
 ```
