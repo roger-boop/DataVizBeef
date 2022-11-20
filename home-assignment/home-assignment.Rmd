@@ -247,7 +247,7 @@ A lower number of iterations leads to one singular big cluster. The more iterati
 
 ## Q5
 
-In order to determine whether or not SAHA and PMA have the same effect on the cells we will perform a pca and see how close the clusters of each condition are. 
+In order to determine whether or not SAHA and PMA have the same effect on the cells we will perform a pca and see if those two drugs share a cluster.
 
 ```{r}
 Y_SAHA_PMA <- X[((treatments$conditions == "SAHA") == TRUE) | ((treatments$conditions == "PMA")== TRUE),]
