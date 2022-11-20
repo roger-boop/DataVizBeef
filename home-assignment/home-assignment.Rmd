@@ -14,9 +14,9 @@ knitr::opts_chunk$set(echo = TRUE)
 An easy way to load the data is with `read.table()`
 
 ```{r q1-loads}
-P3 <- read.table('P3.tsv', header = TRUE)
-P4 <- read.table('P4.tsv', header = TRUE)
-P5 <- read.table('P5.tsv', header = TRUE)
+#P3 <- read.table('P3.tsv', header = TRUE)
+#P4 <- read.table('P4.tsv', header = TRUE)
+#P5 <- read.table('P5.tsv', header = TRUE)
 ```
 
 The method used above requires us to uncompress the data, which might not be a good idea when working with large files, that is why we will use the gfile() function to avoid this problem.
@@ -90,13 +90,7 @@ P5 <- t(P5)
 
 
 NOTA: Esto no hace falta. He puesto los replicates en el dataframe de treatment. borrar?
-Finally we will create 3 dataframes for P3, P4 and P5 respectively containing the information already stored in those tables and an extra column indicating from which experiment the sample comes from(P3, P4 or P5). This will be useful in case we have to bind all of this dataframes into one later on.
 
-```{r q1-addsamples}
-P3_dat <- data.frame(P3, origin = rep("P3", nrow(P3)))
-P4_dat <- data.frame(P4, origin = rep("P4", nrow(P4)))
-P5_dat <- data.frame(P5, origin = rep("P5", nrow(P5)))
-```
 
 ## Q2
 
@@ -152,7 +146,7 @@ Y = X_nozero/rowSums(X_nozero)
 ```
 
 ```{r first-pca}
-#pca <- stats::prcomp(X)
+pca <- stats::prcomp(X)
 pca_normalized <- stats::prcomp(Y, scale = TRUE)
 ```
 
@@ -253,3 +247,56 @@ for (i in c(5, 500, 2000))
 ```
 
 A lower number of iterations leads to one singular big cluster. The more iterations, the more distinct the clusters are. A higher number is better in this case.
+
+
+## Q5
+
+In order to fetermine whether or not SAHA and PMA have the same effect on the cells we will perform a pca and see how close the clusters of each condition are. 
+
+```{r}
+Y_SAHA_PMA <- Y[((treatments$conditions == "SAHA") == TRUE) | ((treatments$conditions == "PMA")== TRUE),]
+
+treatments$totalExpr <- rowSums(X)
+
+treat_SAHA_PMA <- treatments[(treatments$conditions == "SAHA") | (treatments$conditions == "PMA"),]
+
+
+
+PCA_filtered <- stats::prcomp(Y_SAHA_PMA, scale = TRUE)
+library(ggfortify)
+components_filtered <- components[(components$conditions == "SAHA") | (components$conditions == "PMA"),]
+
+ggplot(components_filtered, aes(x = PC1, y = PC2, color = conditions)) + geom_point() + theme_light() + labs(color = "Conditions")
+
+```
+
+In the plot above we can see that PMA and SAHA do not have the same effect on cells since they do not share a cluster.
+
+## Q6
+
+```{r}
+components$totalExpr <- rowSums(components[,1:288])
+
+pl <- ggplot(components, aes(x = PC1, y = PC2, size = totalExpr, shape = replicates, color = conditions)) + geom_point() + theme_light() + labs(color = "Conditions") #+ geom_text(label = rownames(components), colour = "black")
+pl
+```
+PC2 seems to separate cells based on their conditions while PC1 based on their total expression. 
+
+## Q7
+
+In order to find three genes that are activated by SAHA but not by PMA we will add labels to the graph above and look for a cell which is only activated by SAHA.
+
+```{r}
+treatments_no_outlier[248,]$cellnames
+treatments_no_outlier[248,]$conditions
+```
+Cell P2771_N710.S502 is only activated by SAHA, let's see which genes this cell posseses.
+
+```{r}
+#I obtain all genes in P2771_N710.S502 cell.
+Y_filtered <- Y[,Y["P2771_N710.S502",] != 0]
+
+colnames(Y)
+```
+
+
