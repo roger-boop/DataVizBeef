@@ -11,6 +11,8 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Q1
 
+**Load the data from the three plates. Which command do you use? Provide code alternatives and prove that the data is loaded.**
+
 An easy way to load the data is with `read.table()`
 
 ```{r q1-loads, error=TRUE}
@@ -19,7 +21,7 @@ P4 <- read.table('P4.tsv', header = TRUE)
 P5 <- read.table('P5.tsv', header = TRUE)
 ```
 
-The method used above requires us to uncompress the data, which might not be a good idea when working with large files, that is why we will use the gfile() function to avoid this problem.
+The method used above requires us to decompress the data, which might not be a good idea when working with large files, that is why we will use the `gzfile()` function to avoid this problem.
 
 ```{r q1-loads-alt, error=TRUE}
 P3_2 <- read.table(gzfile("P3.tsv.gz"), header = TRUE)
@@ -27,7 +29,7 @@ P4_2 <- read.table(gzfile("P4.tsv.gz"), header = TRUE)
 P5_2 <- read.table(gzfile("P5.tsv.gz"), header = TRUE)
 ```
 
-Another way of loading the data is to use read_tsv, a function specialized in loading tsv files into R.
+Another way of loading the data is to use `read_tsv()`, a function specialized in loading tsv files into R.
 
 ```{r q1-loads-alt2, error=TRUE}
 library(readr)
@@ -36,7 +38,7 @@ P4_3 <- read_tsv(gzfile("P4.tsv.gz"), col_names = TRUE)
 P5_3 <- read_tsv(gzfile("P5.tsv.gz"), col_names = TRUE)
 ```
 
-We could also treat our data like a csv file and load it into R using read_csv. In this case we must specify that each column is separated by a tab in order to prevent the function of returning a table with just one column.
+We could also treat our data like a csv file and load it into R using `read_csv()`. In this case we must specify that each column is separated by a tab in order to prevent the function of returning a table with just one column.
 
 ```{r, error=TRUE}
 P3_4 <- read.csv(gzfile("P3.tsv.gz"), header = TRUE, sep = "\t")
@@ -44,7 +46,7 @@ P4_4 <- read.csv(gzfile("P4.tsv.gz"), header = TRUE, sep = "\t")
 P5_4 <- read.csv(gzfile("P5.tsv.gz"), header = TRUE, sep = "\t")
 ```
 
-Finally we can take advantage of the fact that tsv files are delimited text files to load our data using read.delim.
+Finally we can take advantage of the fact that tsv files are delimited text files to load our data using `read.delim()`.
 
 ```{r, error=TRUE}
 P3_5 <- read.delim(gzfile("P3.tsv.gz"), header = TRUE)
@@ -52,9 +54,9 @@ P4_5 <- read.delim(gzfile("P4.tsv.gz"), header = TRUE)
 P5_5 <- read.delim(gzfile("P5.tsv.gz"), header = TRUE)
 ```
 
-We can show the data is loaded by performing `head()` on them, which will print out the first few lines of the dataframe.
+We can show the data is loaded by performing `head()` on them, which will print out the first few lines of the dataframe. We will not print them here, as the dataset is huge, but you can do so in your own. If it does not raise any error, the data is loaded OK. 
 
-```{r q1-evidence, error=TRUE}
+```{r q1-evidence, error=TRUE, results='hide'}
 #Data loaded with read.table
 head(P3)
 head(P4)
@@ -73,7 +75,7 @@ head(P4_5)
 head(P5_5)
 ```
 
-Having the samples as rownames and the genes as column names will make our data more intuitive to work with, that is why we will transpose our tables.
+Having the samples as row names and the genes as column names will make our data more intuitive to work with, that is why we will transpose our tables.
 
 ```{r q1-transpose_matrix}
 rownames(P3) <- P3$gene
@@ -89,6 +91,8 @@ P5 <- t(P5)
 ```
 
 ## Q2
+
+**Load the treatment associated with every cell. Which command do you use? How many different conditions are present in the plates? How many cells in each condition? Do you need to reorder cells so that data in sample sheet and tsv files match?**
 
 We can use the `read.table()` command again. Let's also split the *label* column in *celltypes* and *conditions*.
 
@@ -115,9 +119,9 @@ We can also see the amount of cell types in each condition.
 table(treatments$conditions, treatments$celltypes)
 ```
 
-In order to determine whether or not we have to record cell names we will check if the indexes for each cell match in the tsv files and in treatments. If they do then we can remove them since we will already know which cell each column is referring to by binding the data with the tsv files, otherwise we will have to record it.
+In order to determine whether or not we have to record cell names, we will check if the indexes for each cell match in the tsv files and in treatments. If they do, then we can remove them since we will already know which cell each column is referring to by binding the data with the tsv files. Otherwise we will have to record it.
 
-```{r q3-record_cell_or_not}
+```{r q3-record_cell_or_not, echo=T}
 treatments$cellnames == cbind(rownames(P3), rownames(P4), rownames(P5))
 treatments$replicates <- append(append(rep("P3", 96), rep("P4",96)), rep("P5", 96))
 ```
@@ -128,18 +132,29 @@ To end this exercise we will create a data frame with all the information obtain
 
 ```{r final_data}
 X <- rbind(P3, P4, P5)
-X_def <- data.frame(X,  treatments[,2:ncol(treatments)])
 ```
 
 ## Q3
 
-```{r scaling}
-#first, remove columns with all zeroes
-X_nozero <- X[, colSums(X)>0]
-#next, normalize the dataframe by dividing each value
-#by the sum of its row
-Y = X_nozero/rowSums(X_nozero)
+**Represent the data with a PCA projection and tSNE. Scale and normalize the data appropriately, showing the different steps in the process and compare with the raw data. Using colors, argue whether batch effects are present between the three plates. Provide different visualizations and/or code alternatives.**
+
+This is a function that takes a dataframe and returns the same dataframe but scaled. This is done by first removing the columns with all zeroes, and later dividing all the observations by the sum of their row.
+
+```{r scale-func}
+my.normalize <- function(X)
+{
+  X_nozero <- X[, colSums(X)>0]
+  return(X_nozero/rowSums(X_nozero))
+}
 ```
+
+Now that we have the function, let's normalize our dataset.
+
+```{r scaling}
+Y = my.normalize(X)
+```
+
+We will do two PCAs, first with the raw dataset and then with the scaled, normalized dataset. This is done so we can see if the batch effect is removed.
 
 ```{r first-pca}
 pca <- stats::prcomp(X)
@@ -149,65 +164,103 @@ pca_normalized <- stats::prcomp(Y, scale = TRUE)
 ```{r libraries}
 library(ggplot2)
 library(Rtsne)
+library(factoextra)
 ```
 
+This is a function that takes the output of a PCA and automatically re-formats so it's easy to plot with ggplot.
+
+```{r pca-components-make}
+make_components <- function(pca)
+{
+  return (as_tibble(pca$x) %>% bind_cols(treatments) %>% as.data.frame())
+}
+```
+
+We have everything ready, so let's plot the raw data PCA.
+
 ```{r pca-plot-no-normalized}
-components <- as_tibble(pca$x) %>% bind_cols(treatments) %>% as.data.frame()
+components <- make_components(pca)
 ggplot(components, aes(x = PC1, y = PC2, color = replicates)) + geom_point() + theme_light() + labs(color = "Replicate", title = "PCA non-normalized")
 ```
 
-There is a clear batch effect, mostly among the P3 replicate, as they are mostly clustered away from the P4 and P5 clusters.
+There is a clear batch effect, mostly among the P3 replicate, as they are mostly clustered away from the P4 and P5 clusters. Let's plot the normalized PCA.
 
 ```{r pca-plot-normalized}
-components <- as_tibble(pca_normalized$x) %>% bind_cols(treatments) %>% as.data.frame()
+components <- make_components(pca_normalized)
 ggplot(components, aes(x = PC1, y = PC2, color = replicates)) + geom_point() + theme_light() + labs(color = "Replicates", title = "PCA normalized")
 ```
 
 This might have solved the batch effect, but there is 1 huge outlier along the PC1 in our data. Let's remove it.
 
-```{r remove-outlier}
-#identify the outlier
-my.tibble <- as_tibble(pca_normalized$x)
-#we see in the output there is a huge outlier, so let's remove it
-my.tibble$PC1
-#this outlier is in position 220, remove it from the pca and the treatments
-my.tibble <- my.tibble[my.tibble$PC1>(-400),]
-treatments_no_outlier <- treatments[-220,]
+First, let's see the name of the outlier sample so we can remove it. We can re-do the plot with the names.
+
+```{r outlier-plot}
+fviz_pca_ind(pca_normalized, repel = T)
 ```
 
+We must remove P2771_N704.S506 from our dataset.
+
+```{r remove-outlier, results='hide'}
+X <- X[! rownames(X) %in% 'P2771_N704.S506',]
+treatments <- treatments %>% filter(!cellnames %in% 'P2771_N704.S506')
+Y <- my.normalize(X)
+```
+
+Now that the dataset has the outlier removed, let's plot once again.
+
 ```{r pca-normalized-no-outlier}
-components <- my.tibble %>% bind_cols(treatments_no_outlier) %>% as.data.frame()
+pca_normalized <- stats::prcomp(Y, scale = TRUE)
+components <- make_components(pca_normalized)
 ggplot(components, aes(x = PC1, y = PC2, color = replicates)) + geom_point() + theme_light() + labs(color = "Replicates", title = "PCA normalized")
 ```
 
-The outlier is gone, and we can clearly differentiate the clusters. The batch effect is also clearly gone compared to the non-scaled, non-normalized PCA. Let's do some tSNEs.
+The outlier is gone, and we can clearly differentiate the clusters. The batch effect is also clearly gone compared to the non-scaled, non-normalized PCA. Let's do some tSNEs, both for the raw and normalized data.
 
 ```{r tsnes}
 X_tsne <- Rtsne(X)
 Y_tsne <- Rtsne(Y)
 ```
 
-```{r tsne-non-normalized}
-tsne_plot <- data.frame(x = X_tsne$Y[,1], 
-                        y = X_tsne$Y[,2], 
+Let's make a function that automatically modifies our data to make an easy input to ggplot. It only takes one argument - the tSNE we want to plot - and it does the rest automatically.
+
+```{r tsne-func}
+make_tsne_plot <- function(tsne)
+{
+  tsne_plot <- data.frame(x = tsne$Y[,1], 
+                        y = tsne$Y[,2], 
                         col = treatments$replicates,
                         sha = treatments$conditions,
                         alp = treatments$celltypes)
+  return(tsne_plot)
+}
+```
+
+tSNE is a heuristic algorithm, which means that it will return a different plot every time we execute it. So, let's fix a seed so we can have reproducible results.
+
+```{r seed}
+set.seed(123)
+```
+
+Let's plot the raw data.
+
+```{r tsne-non-normalized}
+tsne_plot <- make_tsne_plot(X_tsne)
 ggplot(tsne_plot) + geom_point(aes(x=x, y=y, color=col)) + theme_light() + labs(color = "Replicates", title = "tSNE non-normalized")
 ```
 
 There is some clear batch effect once again. Let's remove it by plotting the normalized data.
 
 ```{r tsne-normalized}
-tsne_plot <- data.frame(x = Y_tsne$Y[,1], 
-                        y = Y_tsne$Y[,2], 
-                        col = treatments$replicates,
-                        sha = treatments$conditions,
-                        alp = treatments$celltypes)
+tsne_plot <- make_tsne_plot(Y_tsne)
 ggplot(tsne_plot) + geom_point(aes(x=x, y=y, color=col)) + theme_light() + labs(color = "Replicates", title = "tSNE normalized") 
 ```
 
+We had already removed the outlier in the PCA step so we have nothing extra to do.
+TODO: DISCUSS
+
 ## Q4
+
+**Check the effect of perplexity and iterations, the same as scaling the data for tSNE and PCA plots respectively.**
 
 Let's try to change the perplexity parameter and see how it affects the data.
 
@@ -215,17 +268,12 @@ Let's try to change the perplexity parameter and see how it affects the data.
 for (i in c(3, 60, 70))
 {
   i_tsne <- Rtsne(Y, perplexity = i)
-  tsne_plot <- data.frame(x = i_tsne$Y[,1], 
-                        y = i_tsne$Y[,2], 
-                        col = treatments$replicates,
-                        sha = treatments$conditions,
-                        alp = treatments$celltypes)
+  tsne_plot <- make_tsne_plot(i_tsne)
   print(ggplot(tsne_plot) + geom_point(aes(x=x, y=y, color=col)) + theme_light() + labs(color = "Replicates", title = paste0("tSNE for perplexity = ", i)))
 }
 ```
 
-The perplexity changes the number of neightbors that each cluster should have. For perplexity = 3, the clusters only have 3 neighbors, so the clusters are tiny. It's good to have a high perplexity, as high as possible. 
-
+The perplexity changes the number of neighbors that each cluster should have. For perplexity = 3, the clusters only have 3 neighbors, so the clusters are tiny. It's good to have a high perplexity, as high as possible. 
 
 Let's try changing the iterations now.
 
@@ -233,60 +281,65 @@ Let's try changing the iterations now.
 for (i in c(5, 500, 2000))
 {
   i_tsne <- Rtsne(Y, max_iter = i)
-  tsne_plot <- data.frame(x = i_tsne$Y[,1], 
-                        y = i_tsne$Y[,2], 
-                        col = treatments$replicates,
-                        sha = treatments$conditions,
-                        alp = treatments$celltypes)
+  tsne_plot <- make_tsne_plot(i_tsne)
   print(ggplot(tsne_plot) + geom_point(aes(x=x, y=y, color=col)) + theme_light() + labs(color = "Replicates", title = paste0("tSNE for iterations = ", i)))
 }
 ```
 
 A lower number of iterations leads to one singular big cluster. The more iterations, the more distinct the clusters are. A higher number is better in this case.
 
-
 ## Q5
 
-In order to determine whether or not SAHA and PMA have the same effect on the cells we will perform a pca and see if those two drugs share a cluster.
+**Argue whether the drugs SAHA and PMA have the same effect on the cells. Add a legend and label the axes accordingly.**
+
+In order to determine whether or not SAHA and PMA have the same effect on the cells, we will perform a PCA and see if those two drugs share a cluster.
+
+```{r totalexpr-func}
+totalExpr <- function(X)
+{
+  X_nozero <- X[, colSums(X)>0]
+  return (rowSums(X_nozero))
+}
+```
 
 ```{r}
-Y_SAHA_PMA <- X[((treatments$conditions == "SAHA") == TRUE) | ((treatments$conditions == "PMA")== TRUE),]
-
-treatments$totalExpr <- rowSums(Y)
+X_SAHA_PMA <- X[((treatments$conditions == "SAHA") == TRUE) | ((treatments$conditions == "PMA")== TRUE),]
 
 treat_SAHA_PMA <- treatments[(treatments$conditions == "SAHA") | (treatments$conditions == "PMA"),]
 
-Y_SAHA_PMA <- Y_SAHA_PMA[, colSums(Y_SAHA_PMA)>0]
-Y_SAHA_PMA = Y_SAHA_PMA/rowSums(Y_SAHA_PMA)
+Y_SAHA_PMA <- my.normalize(X_SAHA_PMA)
 
 PCA_filtered <- stats::prcomp(Y_SAHA_PMA, scale = TRUE)
-library(ggfortify)
+
 components_filtered <- components[(components$conditions == "SAHA") | (components$conditions == "PMA"),]
 
-ggplot(components_filtered, aes(x = PC1, y = PC2, color = conditions)) + geom_point() + theme_light() + labs(color = "Conditions")
+ggplot(components_filtered, aes(x = PC1, y = PC2, color = conditions, shape = celltypes)) + geom_point() + theme_light() + scale_shape_manual(values = c(3,17)) +  labs(color = "Conditions", shape = "Cell type")
 
 ```
 
-In the plot above we can see that PMA and SAHA do not have the same effect on cells since they do not share a cluster.
+In the plot above we can see that PMA and SAHA do not have the same effect on cells since they do not share a cluster. The clusters contain cells of both types.
 
 ## Q6
 
-```{r}
-components$totalExpr <- rowSums(components[,1:288])
+**Using the correct PCA analysis, find an interpretation for the first and the second principal component.**
 
-pl <- ggplot(components, aes(x = PC1, y = PC2, color = totalExpr, shape = conditions)) + geom_point() + scale_colour_gradient(low = "#00FF00", high = "#FF0000") + scale_shape_manual(values = c(3,17, 11)) + theme_light() + labs(color = "Expression", shape = "Conditions", title = "PCA")
+```{r}
+pl <- ggplot(components, aes(x = PC1, y = PC2, color = totalExpr(X), shape = conditions)) + geom_point() + scale_colour_gradient(low = "#00FF00", high = "#FF0000") + scale_shape_manual(values = c(3,17, 11)) + theme_light() + labs(color = "Expression", shape = "Conditions", title = "PCA")
 
 pl
 ```
+
 PC2 seems to separate cells based on their conditions while PC1 based on their total expression. 
 
 ## Q7
 
-In order to find three genes that are activated by SAHA but not by PMA, we will subset all cells with SAHA and PMA respectively and sum all the expressions of their genes. This is not the total expression of the cell, but the total expression of each gene. Then, we take the 3 most expressed genes in SAHA and the 3 most expressed genes in PMA, and compare them.
+**Using your answer to the previous question, find three genes that are activated by SAHA but not by PMA.**
+
+In order to do this, we will subset all cells with SAHA and PMA respectively and sum all the expressions of their genes. This is not the total expression of the cell, but the total expression of each gene. Then, we take the 3 most expressed genes in SAHA and the 3 most expressed genes in PMA, and compare them.
 
 ```{r}
-SAHA_cells <- treatments_no_outlier %>% filter(conditions == "SAHA") %>% pull(cellnames)
-PMA_cells <- treatments_no_outlier %>% filter(conditions == "PMA") %>% pull(cellnames)
+SAHA_cells <- treatments %>% filter(conditions == "SAHA") %>% pull(cellnames)
+PMA_cells <- treatments %>% filter(conditions == "PMA") %>% pull(cellnames)
 SAHA_Y <- Y[SAHA_cells,]
 PMA_Y <- Y[PMA_cells,]
 
@@ -297,7 +350,7 @@ names(colSums(PMA_Y)[order(colSums(PMA_Y), decreasing=TRUE)[1:3]])
 After this procedure we see that the 3 most expressed genes in SAHA are not the same as in PMA. Therefore, we can claim that 
 
 
-ENSG00000251562.8  ENSG00000198804.2  ENSG00000280614.1"
+ENSG00000251562.8  ENSG00000198804.2  ENSG00000280614.1
 
 
 Are activated by SAHA but not by PMA.
