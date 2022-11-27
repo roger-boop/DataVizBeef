@@ -354,3 +354,137 @@ ENSG00000251562.8  ENSG00000198804.2  ENSG00000280614.1
 
 
 Are activated by SAHA but not by PMA.
+
+
+## Q8
+
+**Create a UMAP visualization of the results. Explore differences between producing**
+**results from raw data counts or normalized results. Explore also the effect of predicting**
+**a new sample result from previous UMAP analysis. Compare results and give some**
+**thoughts on it.**
+
+```{r libraries-2}
+library(umap)
+```
+
+To make the procedure easier, we have made a function that automatically takes a UMAP analysis and re-formats it so it can work well with ggplot.
+
+```{r umap-func}
+make_umap_data <- function(UMAP)
+{
+  return( data.frame(x = UMAP$layout[,1], y = UMAP$layout[,2], col = treatments) )
+}
+```
+
+Let's do both UMAPs, for normalized and non-normalized data, and compare them.
+
+```{r umap-1}
+UMAP_X <- umap::umap(X)
+UMAP_Y <- umap::umap(Y)
+
+UMAP_data_X <- make_umap_data(UMAP_X)
+UMAP_data_Y <- make_umap_data(UMAP_Y)
+
+ggplot(UMAP_data_X, aes(x = x, y = y, shape = col.conditions, color=col.replicates)) + geom_point() + scale_shape_manual(values = c(3,17, 11)) + theme_light() + labs(color = "Expression", shape = "Conditions", title = "Non-scaled UMAP")
+
+ggplot(UMAP_data_Y, aes(x = x, y = y, shape = col.conditions, color=col.replicates)) + geom_point() + scale_shape_manual(values = c(3,17, 11)) + theme_light() + labs(color = "Expression", shape = "Conditions", title = "Normalized UMAP")
+```
+
+DISCUSS DIFFERENCES OF NORMALIZED/NON NORMALIZED
+
+Now that we have done that, we can recreate the other plots we performed but with UMAP and see if the results match.
+
+```{r umap-2}
+ggplot(UMAP_data_Y, aes(x = x, y = y, shape = col.conditions, color=totalExpr(X))) + geom_point() + 
+  scale_colour_gradient(low = "#00FF00", high = "#FF0000") + scale_shape_manual(values = c(3,17, 11)) + theme_light() + 
+  labs(color = "Expression", shape = "Conditions", title = "Normalized UMAP")
+```
+
+While the clusters are distributed differently, the clusters themselves are the same. There are SAHA, PMA and DMSO clusters all the same, like in the other plots we had done.
+
+Next, let's make some predictions with UMAP. We will re-do the plot above but with all predicted data, using the UMAP model we used on the dataset Y.
+
+```{r umap-predictions}
+UMAP_predicted = stats::predict(UMAP_Y, Y)
+
+UMAP_predicted_data <- data.frame(x = UMAP_predicted[,1], y = UMAP_predicted[,2], col = treatments)
+
+ggplot(UMAP_predicted_data, aes(x = x, y = y, shape = col.conditions, color=totalExpr(X))) + geom_point() + 
+  scale_colour_gradient(low = "#00FF00", high = "#FF0000") + scale_shape_manual(values = c(3,17, 11)) + theme_light() + 
+  labs(color = "Expression", shape = "Conditions", title = "Normalized UMAP")
+```
+
+We can see that both plots are remarkably similar, with some minor differences, but the clusters remain the same.
+(INTERPRETAR)
+
+## Q9
+
+**Test some parameters such as minimum distance and number of neighbors. Compare**
+**results and give some thoughts on it.**
+
+Let's begin by changing the minimum distance.
+
+```{r umap-min-dist}
+for (i in c(0.1,0.5,0.9))
+{
+  tmp.config <- umap::umap.defaults
+  tmp.config$min_dist <- i
+    
+  UMAP_tmp <- umap::umap(Y, config = tmp.config)
+
+  UMAP_data_tmp <- make_umap_data(UMAP_tmp)
+
+  print(ggplot(UMAP_data_tmp, aes(x = x, y = y, shape = col.conditions, color=col.replicates)) + geom_point() + scale_shape_manual(values = c(3,17, 11)) +
+          theme_light() + labs(color = "Expression", shape = "Conditions", title = paste0("UMAP with minimum distance = ", i)))
+  
+}
+```
+
+As we can see, the minimum distance determines how "tight" the clusters are. A small value leads to very compact, distinct clusters, and a large value leads to very "sparse" clusters. Note that, as per the default values for UMAP, the minimum distance must go from 0 to 1 (excluding those values). 
+
+Now, let's see the effect of the number of neighbors.
+
+```{r umap-neighbors, warning=FALSE}
+for (i in c(2,10,50))
+{
+  tmp.config <- umap::umap.defaults
+  tmp.config$n_neighbors <- i
+    
+  UMAP_tmp <- umap::umap(Y, config = tmp.config)
+
+  UMAP_data_tmp <- make_umap_data(UMAP_tmp)
+
+  print(ggplot(UMAP_data_tmp, aes(x = x, y = y, shape = col.conditions, color=col.replicates)) + geom_point() + scale_shape_manual(values = c(3,17, 11)) +
+          theme_light() + labs(color = "Expression", shape = "Conditions", title = paste0("UMAP with num. neighbors = ", i)))
+  
+}
+```
+
+This variable determines the maximum number of neighbors each point can have. Notice that, for n_neighbors = 2, each point is perfectly paired with another. Note that the number of neighbors must be equal to or smaller than the number of samples. This makes sense, because you can't have more neighbors than there are points in the graph.
+
+## Q10
+
+**Create a final visualization using results from PCA, tSNE and UMAP and write some thoughts**
+**on the comparison of the three high-dimension techniques.**
+**Use as many metadata available as possible and generate clear and easy to interpret plots.**
+
+Let's do 3 final plots. A PCA, a t-SNE and a UMAP. Later, we will discuss them.
+
+```{r pca-final, warning=FALSE}
+components <- make_components(pca_normalized)
+ggplot(components, aes(x = PC1, y = PC2, color = totalExpr(X), shape = conditions, alpha = celltypes)) + geom_point() + scale_shape_manual(values = c(3,17, 11)) + scale_colour_gradient(low = "#00FF00", high = "#FF0000") + theme_light() + labs(color = "Total Expression", alpha = "Cell types", shape = "Conditions", title = "PCA")
+```
+
+```{r tsne-final, warning=FALSE}
+tsne_plot <- make_tsne_plot(Y_tsne)
+ggplot(tsne_plot) + geom_point(aes(x = x, y = y, color = totalExpr(X), shape = sha, alpha = alp)) + scale_shape_manual(values = c(3,17, 11)) + scale_colour_gradient(low = "#00FF00", high = "#FF0000") + theme_light() + labs(color = "Total Expression", alpha = "Cell types", shape = "Conditions", title = "tSNE")
+```
+
+```{r umap-final, warning=FALSE}
+UMAP_data_Y <- make_umap_data(UMAP_Y)
+ggplot(UMAP_data_Y, aes(x = x, y = y, shape = col.conditions, color=totalExpr(X), alpha = col.celltypes)) + geom_point() + 
+  scale_colour_gradient(low = "#00FF00", high = "#FF0000") + scale_shape_manual(values = c(3,17, 11)) + theme_light() + 
+  labs(color = "Expression", shape = "Conditions", title = "UMAP")
+```
+
+DISCUSS
