@@ -513,4 +513,12 @@ ggplot(UMAP_data_Y, aes(x = x, y = y, shape = col.conditions, color=totalExpr(X)
   labs(color = "Expression", shape = "Conditions", title = "UMAP")
 ```
 
-DISCUSS
+The primary purpose of this analysis was to try different dimensionality reduction methods to check how different treatments affect the expression.
+
+We can divide the methods used into two groups: Linear methods and Non-linear methods.
+
+Linear methods (PCA), construct new dimensions. And Non-linear methods (t-SNE and UMAP) try to retain local similarities between samples at the cost of retaining the similarities between different samples.
+
+Non-linear mappings are ideal for low-dimensional representations or visualizations. Linear reduction methods, on the other hand, are preferably used to reduce complexity, improve run time, determine feature importance, and prevent the curse of dimensionality.
+
+The significant difference between UMAP and TSNE is scalability, UMAP can be applied directly to sparse matrices thereby eliminating the need to apply any Dimensionality reduction such as PCA as a pre-processing step. Simply, UMAP is similar to t-SNE but with probably higher processing speed, therefore, faster and better visualization.
