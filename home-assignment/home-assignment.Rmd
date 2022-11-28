@@ -420,7 +420,7 @@ To apply the umap algorithm we will use the umap function,
 library(umap)
 ```
 
-As with tSNE and PCA, umap's oputput requires some filtering to be ploted, to make this procedure easier, we have made a function that automatically takes a UMAP analysis and re-formats it so it can work well with ggplot.
+As with tSNE and PCA, umap's oputput requires some tweaks to be plotted, to make this procedure easier, we have made a function that automatically takes a UMAP analysis and re-formats it so it can work well with ggplot.
 
 ```{r umap-func}
 make_umap_data <- function(UMAP)
@@ -429,7 +429,7 @@ make_umap_data <- function(UMAP)
 }
 ```
 
-Let's do both UMAPs, for normalized and non-normalized data, and compare them.
+Let's do two UMAPs, one for normalized and one non-normalized data, and see if we can observe the same things we did with the batch effect of PCA and tSNE.
 
 ```{r umap-1}
 UMAP_X <- umap::umap(X)
@@ -440,9 +440,9 @@ ggplot(UMAP_data_X, aes(x = x, y = y, shape = col.conditions, color=col.replicat
 ggplot(UMAP_data_Y, aes(x = x, y = y, shape = col.conditions, color=col.replicates)) + geom_point() + scale_shape_manual(values = c(3,17, 11)) + theme_light() + labs(color = "Expression", shape = "Conditions", title = "Normalized UMAP")
 ```
 
-DISCUSS DIFFERENCES OF NORMALIZED/NON NORMALIZED
+**As in PCA and tSNE the non-scaled UMAP shows a clear batch effect that can be corrected through a normalization and scaling process.**
 
-Now that we have done that, we can recreate the other plots we performed but with UMAP and see if the results match.
+Now that we have removed the batch effect trough normalisation, we can recreate the other plots performed until now but with UMAP and see if the results match.
 
 ```{r umap-2}
 ggplot(UMAP_data_Y, aes(x = x, y = y, shape = col.conditions, color=totalExpr(X))) + geom_point() + 
@@ -450,7 +450,7 @@ ggplot(UMAP_data_Y, aes(x = x, y = y, shape = col.conditions, color=totalExpr(X)
   labs(color = "Expression", shape = "Conditions", title = "Normalized UMAP")
 ```
 
-While the clusters are distributed differently, the clusters themselves are the same. There are SAHA, PMA and DMSO clusters all the same, like in the other plots we had done.
+While the clusters are distributed differently, the clusters themselves are very similar. Having said that this plot has two different clusters for DMSO and PMA which contradicts the last PCA performed.
 
 Next, let's make some predictions with UMAP. We will re-do the plot above but with all predicted data, using the UMAP model we used on the dataset Y.
 
@@ -463,14 +463,16 @@ ggplot(UMAP_predicted_data, aes(x = x, y = y, shape = col.conditions, color=tota
 ```
 
 We can see that both plots are remarkably similar, with some minor differences, but the clusters remain the same.
-(INTERPRETAR)
+A posible explanation for such fidelityt could be that the data used to create UMAP_Y is also the one we are giving to the prediction, therefore we might be having overfitting.
 
 ## Q9
 
 **Test some parameters such as minimum distance and number of neighbors. Compare**
 **results and give some thoughts on it.**
 
-Let's begin by changing the minimum distance.
+UMAP has minimum distance and number of neighbors as parameters that we have been leacing on their default value, since we want to know how UMAP interacts with out data in comparassion to PCA and tSNE knowing the effect this two parameters have is a must.
+
+Let's begin by changing the minimum distance through the same for loop structure we have been using every time we want to compare how two parameters affect our data.
 
 ```{r umap-min-dist}
 for (i in c(0.1,0.5,0.9))
@@ -512,7 +514,7 @@ This variable determines the maximum number of neighbors each point can have. No
 **on the comparison of the three high-dimension techniques.**
 **Use as many metadata available as possible and generate clear and easy to interpret plots.**
 
-Let's do 3 final plots. A PCA, a t-SNE and a UMAP. Later, we will discuss them.
+Now that we know how UMAP affects our data it is time to compare the three data visualization techniques used in this assignment. For that we will create a plot for each technique and discuss each of them.
 
 ```{r pca-final, warning=FALSE}
 components <- make_components(pca_normalized)
