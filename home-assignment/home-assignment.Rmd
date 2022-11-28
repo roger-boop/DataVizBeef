@@ -15,7 +15,7 @@ For this project we will use three data frames containing the expression differe
 
 To aid us in this task we have a file containing the metadata of each sample, in specific their cell type and the drug it has been subjected to.
 
-The tools we will use to visualise our data are: PCA(principal component analysis), tSNE(t-Distributed Stochastic Neighbor Embedding) and UMAP(Uniform Manifold Approximation and Projection).
+The tools we will use to visualise our data are: PCA(principal component analysis) and tSNE(t-Distributed Stochastic Neighbor Embedding).
  
 With all the materials defined let's get going with the analysis.
 
@@ -140,7 +140,7 @@ table(treatments$conditions, treatments$celltypes)
 
 Finally we need to figure out if we need to record cell names or not by checking if the indexes for each cell are the same in all the dataframes created. If they do, then we can remove them since we will already know which cell each column is referring to by binding the metadata with the tsv files, otherwise we will have to record it.
 
-Our way of knowing wether the indexes align in all dataframes or not is by looking for false values in a condition that compares the rownames of P3, P4 and P5 with the cellnames present in treatment.
+Our way of knowing wether the indexes align in all dataframes or not is by looking for false values in a condition that compares the rownames of P3, P4 and P5 with the cellnames present in treatment, if there are no false values then the posterior table should just have a column called true with a value of 288(the number of rows in both treatments and in P3, P4 and P5 combined).
 
 
 ```{r q3-record_cell_or_not, echo=T}
@@ -149,7 +149,7 @@ table(treatments$cellnames == cbind(rownames(P3), rownames(P4), rownames(P5)))
 
 **As we can see no False boolean appears which means all the indexes are identical and therefore, there is no need to record the cell names.**
 
-Taking advantatge of the fact we are working with the treatments dataframe we are going to add a new column that contains the plate from which each cell comes from. Eventhough this new feature might seem useless right now it will be of use later when we check if there is batch effect or not.
+Taking advantatge of the fact we are working with the treatments dataframe we are going to add a new column that contains the plate from which each cell comes from. Eventhough this new feature might seem useless right now it will be of use later to check if there is batch effect or not.
 
 To create this new column we used rep to generate the vectors that will conform the new feature and append to put it all together and add the new column to the dataframe.
 
@@ -157,9 +157,7 @@ To create this new column we used rep to generate the vectors that will conform 
 treatments$replicates <- append(append(rep("P3", 96), rep("P4",96)), rep("P5", 96))
 ```
 
-We can see the index of the cells is the same in both treatments and the tsv files, therefore we don't have to record those names.
-
-To end this exercise we will create a data frame with all the information obtained till now.
+To end this exercise we will create a data frame with all the information obtained till now, this will allow us to use our data visualization tools on all the information at our disposal.
 
 ```{r final_data}
 X <- rbind(P3, P4, P5)
@@ -169,7 +167,33 @@ X <- rbind(P3, P4, P5)
 
 **Represent the data with a PCA projection and tSNE. Scale and normalize the data appropriately, showing the different steps in the process and compare with the raw data. Using colors, argue whether batch effects are present between the three plates. Provide different visualizations and/or code alternatives.**
 
-This is a function that takes a dataframe and returns the same dataframe but scaled. This is done by first removing the columns with all zeroes, and later dividing all the observations by the sum of their row.
+With all the data in a whole dataframe we can start plotting it. We will first perform a PCA.
+
+```{r pca-non-norm}
+library(ggplot2)
+library(Rtsne)
+pca <- stats::prcomp(X)
+```
+
+Then we will create a function in charge of reformatting the output of prcomp so it is easier to plot.
+
+```{r}
+make_components <- function(pca)
+{
+  return (as_tibble(pca$x) %>% bind_cols(treatments) %>% as.data.frame())
+}
+```
+
+Now everything is ready to plot the data, each dot in our graph will be colored depending on the plate it comes from for the purpose of checking whether there is batch effect or not.
+
+```{r}
+components <- make_components(pca)
+ggplot(components, aes(x = PC1, y = PC2, color = replicates)) + geom_point() + theme_light() + labs(color = "Replicate", title = "PCA non-normalized")
+```
+
+**There is a clear batch effect, mostly among the P3 replicate, as they are mostly clustered away from the P4 and P5 clusters. Normalizing and scaling the data might fix this issue.**
+
+To normalize the data we will first remove all the zeroes in it and then average it by the total expression of each cell. Since this operation is going to be repeated a lot during this assignment we will create a function that performs it.
 
 ```{r scale-func}
 my.normalize <- function(X)
@@ -179,57 +203,33 @@ my.normalize <- function(X)
 }
 ```
 
-Now that we have the function, let's normalize our dataset.
+With the function created, let's normalize our dataset.
 
 ```{r scaling}
 Y = my.normalize(X)
 ```
 
-We will do two PCAs, first with the raw dataset and then with the scaled, normalized dataset. This is done so we can see if the batch effect is removed.
+Now it is time to plot our normalized dataset, we will set scale = TRUE in prcomp so our data is scaled before it is plotted. As we have done before we will color each dot in function of the plate they come from in order to confirm the lack of batch effect.
 
-```{r first-pca}
-pca <- stats::prcomp(X)
+```{r pca-normalised}
 pca_normalized <- stats::prcomp(Y, scale = TRUE)
-```
 
-```{r libraries}
-library(ggplot2)
-library(Rtsne)
-library(factoextra)
-```
-
-This is a function that takes the output of a PCA and automatically re-formats so it's easy to plot with ggplot.
-
-```{r pca-components-make}
-make_components <- function(pca)
-{
-  return (as_tibble(pca$x) %>% bind_cols(treatments) %>% as.data.frame())
-}
-```
-
-We have everything ready, so let's plot the raw data PCA.
-
-```{r pca-plot-no-normalized}
-components <- make_components(pca)
-ggplot(components, aes(x = PC1, y = PC2, color = replicates)) + geom_point() + theme_light() + labs(color = "Replicate", title = "PCA non-normalized")
-```
-
-There is a clear batch effect, mostly among the P3 replicate, as they are mostly clustered away from the P4 and P5 clusters. Let's plot the normalized PCA.
-
-```{r pca-plot-normalized}
 components <- make_components(pca_normalized)
+
 ggplot(components, aes(x = PC1, y = PC2, color = replicates)) + geom_point() + theme_light() + labs(color = "Replicates", title = "PCA normalized")
 ```
 
-This might have solved the batch effect, but there is 1 huge outlier along the PC1 in our data. Let's remove it.
+**By normalising and scaling the data we have removed the batch effect, but there is still one huge otulier along PC1 in both graphs that needs to be removed.**
 
-First, let's see the name of the outlier sample so we can remove it. We can re-do the plot with the names.
+To remove the outlier we first need to figure out it's name, we will find it by using the fviz_pca_ind from the factoextra package to create a graph similar to the previous one but with the name of each dot.
 
 ```{r outlier-plot}
-fviz_pca_ind(pca_normalized, repel = T)
+#library(factoextra)
+
+#fviz_pca_ind(pca_normalized, repel = T)
 ```
 
-We must remove P2771_N704.S506 from our dataset.
+It is clear our outlier is the cell P2771_N704.S506. To remove it we will remove the row named after this cell by using an %in% statement and the filter function from dplyr package, then we will normalize X again.
 
 ```{r remove-outlier, results='hide'}
 X <- X[! rownames(X) %in% 'P2771_N704.S506',]
@@ -237,7 +237,7 @@ treatments <- treatments %>% filter(!cellnames %in% 'P2771_N704.S506')
 Y <- my.normalize(X)
 ```
 
-Now that the dataset has the outlier removed, let's plot once again.
+With the outlier out of the way our graph should look much better now to the point each cluster is differentiable form the others.
 
 ```{r pca-normalized-no-outlier}
 pca_normalized <- stats::prcomp(Y, scale = TRUE)
@@ -245,14 +245,17 @@ components <- make_components(pca_normalized)
 ggplot(components, aes(x = PC1, y = PC2, color = replicates)) + geom_point() + theme_light() + labs(color = "Replicates", title = "PCA normalized")
 ```
 
-The outlier is gone, and we can clearly differentiate the clusters. The batch effect is also clearly gone compared to the non-scaled, non-normalized PCA. Let's do some tSNEs, both for the raw and normalized data.
+
+We have already seen normalisation and scaling is needed to have a good PCA, but does the same thing apply to tSNE? Let's figure it out:
+
+  - We will use the Rtsne function to perform a tSNE on both the raw data and the normalised one. 
 
 ```{r tsnes}
 X_tsne <- Rtsne(X)
 Y_tsne <- Rtsne(Y)
 ```
 
-Let's make a function that automatically modifies our data to make an easy input to ggplot. It only takes one argument - the tSNE we want to plot - and it does the rest automatically.
+  - Similar to prcomp the output of Rtsne needs to be modified so it can be easily plotted with ggplot2, we will build a function that creates a data frame with set modifications. 
 
 ```{r tsne-func}
 make_tsne_plot <- function(tsne)
@@ -266,34 +269,35 @@ make_tsne_plot <- function(tsne)
 }
 ```
 
-tSNE is a heuristic algorithm, which means that it will return a different plot every time we execute it. So, let's fix a seed so we can have reproducible results.
+  - tSNE is a heuristic algorithm, which means that it will return a different plot every time we execute it. So, let's fix a seed so we can have reproducible results.
 
 ```{r seed}
 set.seed(123)
 ```
 
-Let's plot the raw data.
+  - With the tSNE created we will make a plot that, as all the others created until now, will have each cell colored in function of the plate they come from so as to check for batch effect.
 
 ```{r tsne-non-normalized}
 tsne_plot <- make_tsne_plot(X_tsne)
 ggplot(tsne_plot) + geom_point(aes(x=x, y=y, color=col)) + theme_light() + labs(color = "Replicates", title = "tSNE non-normalized")
 ```
 
-There is some clear batch effect once again. Let's remove it by plotting the normalized data.
+**As it happened with PCA the graph above has batch effect, therefore we will need to normalize the data in order to remove it.**
 
 ```{r tsne-normalized}
 tsne_plot <- make_tsne_plot(Y_tsne)
 ggplot(tsne_plot) + geom_point(aes(x=x, y=y, color=col)) + theme_light() + labs(color = "Replicates", title = "tSNE normalized") 
 ```
 
-We had already removed the outlier in the PCA step so we have nothing extra to do.
-TODO: DISCUSS
+While we have gotten rid of tha batch effect in both PCA and tSNE the graphs obtained do not look alike, PCA has most of it's clusters arround the midle of the plot while tSNE has the clusters more distributed arround the graph, this could be attributed to the fact that the perplexity parameter in tSNE is too small which reduces the number of neighbours a point can have.
 
 ## Q4
 
 **Check the effect of perplexity and iterations, the same as scaling the data for tSNE and PCA plots respectively.**
 
-Let's try to change the perplexity parameter and see how it affects the data.
+tSNE has perplexity and iteration parameters that we have left as default until now, let's check how they affect the results starting from perplexity.
+
+To observe the effects of perplexity we will create a for loop that changes perplexity by 3, 60 and 70 creating a plot for each iteration.
 
 ```{r perplex}
 for (i in c(3, 60, 70))
@@ -304,9 +308,9 @@ for (i in c(3, 60, 70))
 }
 ```
 
-The perplexity changes the number of neighbors that each cluster should have. For perplexity = 3, the clusters only have 3 neighbors, so the clusters are tiny. It's good to have a high perplexity, as high as possible. 
+**The perplexity changes the number of neighbors that each cluster should have. For perplexity = 3, the clusters only have 3 neighbors, so the clusters are tiny. It's good to have a high perplexity since this will turn our clusters into denser structures.**
 
-Let's try changing the iterations now.
+Now is time to check the effect of the iterations, we will follow the same procedure as before changing the max_iter parameter by 5, 500 and 2000, plotting the results in each iteration.
 
 ```{r iter}
 for (i in c(5, 500, 2000))
@@ -317,21 +321,15 @@ for (i in c(5, 500, 2000))
 }
 ```
 
-A lower number of iterations leads to one singular big cluster. The more iterations, the more distinct the clusters are. A higher number is better in this case.
+**A lower number of iterations leads to one singular big cluster. The more iterations, the more distinct the clusters are. A higher number is better in this case since being able to differentiate clusters is what will allow us to reach a conclusion.**
 
 ## Q5
 
 **Argue whether the drugs SAHA and PMA have the same effect on the cells. Add a legend and label the axes accordingly.**
 
-In order to determine whether or not SAHA and PMA have the same effect on the cells, we will perform a PCA and see if those two drugs share a cluster.
+Now that we have the data looking as we want to and we have observed how tSNE and PCA are affected by different parameters it is time to start extracting conclusions from our data, in particular we'll start answering our initial question in the introduction with SAHA and PMA, do they have the same effect?
 
-```{r totalexpr-func}
-totalExpr <- function(X)
-{
-  X_nozero <- X[, colSums(X)>0]
-  return (rowSums(X_nozero))
-}
-```
+To answer it we will create a subset from our data that will only contain the cells with a SAHA or PMA condition by using a == condition on the treatments$conditions column. Then we will normalise the subset and perform a PCA in order to see if the two drugs share a cluster, if they do then it means both substances have the same effect.
 
 ```{r}
 X_SAHA_PMA <- X[((treatments$conditions == "SAHA") == TRUE) | ((treatments$conditions == "PMA")== TRUE),]
@@ -348,11 +346,23 @@ ggplot(components_filtered, aes(x = PC1, y = PC2, color = conditions, shape = ce
 
 ```
 
-In the plot above we can see that PMA and SAHA do not have the same effect on cells since they do not share a cluster. The clusters contain cells of both types.
+**Both SAHA and PMA have clearly differentiable clusters therefore they do not have the same effect on cells**
 
 ## Q6
 
 **Using the correct PCA analysis, find an interpretation for the first and the second principal component.**
+
+If we are to extract conclusions from the PCA analyses we perform it would we wise to figure out what PC1 and PC2 use to divide our data into clusters.
+
+To figure this out we will create a function that will return the total expression of the dataset it receives as input and use the components pca object created earlier to make a plot that will show the total expression and the drugs used on each cell.
+
+```{r totalexpr-func}
+totalExpr <- function(X)
+{
+  X_nozero <- X[, colSums(X)>0]
+  return (rowSums(X_nozero))
+}
+```
 
 ```{r}
 pl <- ggplot(components, aes(x = PC1, y = PC2, color = totalExpr(X), shape = conditions)) + geom_point() + scale_colour_gradient(low = "#00FF00", high = "#FF0000") + scale_shape_manual(values = c(3,17, 11)) + theme_light() + labs(color = "Expression", shape = "Conditions", title = "PCA")
@@ -360,11 +370,13 @@ pl <- ggplot(components, aes(x = PC1, y = PC2, color = totalExpr(X), shape = con
 pl
 ```
 
-PC2 seems to separate cells based on their conditions while PC1 based on their total expression. 
+**It is evident on the plot above that PC1 separates cells based on the conditions they have been exposed to while PC2 differentiates them by their total expression.** 
 
 ## Q7
 
 **Using your answer to the previous question, find three genes that are activated by SAHA but not by PMA.**
+
+Now is finally time to apply what we have learned from observing the two last PCA plots to extract three genes activated by SAHA but not by PMA.
 
 In order to do this, we will subset all cells with SAHA and PMA respectively and sum all the expressions of their genes. This is not the total expression of the cell, but the total expression of each gene. Then, we take the 3 most expressed genes in SAHA and the 3 most expressed genes in PMA, and compare them.
 
@@ -386,9 +398,13 @@ ENSG00000251562.8  ENSG00000198804.2  ENSG00000280614.1
 
 Are activated by SAHA but not by PMA.
 
+# Conclusions extracted until now
 
-
-
+  Up until now we have seen how PCA and tSNE are both useful data visualisation algorithms with their own advantatges and disadvantatges. For this particular case we have leaned towards PCA due to it's high speed when compared to tSNE, which is an important factor to take into account when we have performed 3 PCAs to extract some information about out data.
+  
+  Regarding our initial question it seems that PMA has the same effect as DMSO on cells which differs from the consequences brought by SAHA.
+  
+  Having said all this we still have not explored how UMAP interacts with our data, which not only might provide similar or different plots but also allow us to make predictions. For the following Q8, Q9 we will see how UMAP interacts with our data and in Q10 we will compare it to PCA and tSNE.
 
 
 ## Q8
@@ -398,11 +414,13 @@ Are activated by SAHA but not by PMA.
 **a new sample result from previous UMAP analysis. Compare results and give some**
 **thoughts on it.**
 
+To apply the umap algorithm we will use the umap function,
+
 ```{r libraries-2}
 library(umap)
 ```
 
-To make the procedure easier, we have made a function that automatically takes a UMAP analysis and re-formats it so it can work well with ggplot.
+As with tSNE and PCA, umap's oputput requires some filtering to be ploted, to make this procedure easier, we have made a function that automatically takes a UMAP analysis and re-formats it so it can work well with ggplot.
 
 ```{r umap-func}
 make_umap_data <- function(UMAP)
@@ -521,4 +539,5 @@ Linear methods (PCA), construct new dimensions. And Non-linear methods (t-SNE an
 
 Non-linear mappings are ideal for low-dimensional representations or visualizations. Linear reduction methods, on the other hand, are preferably used to reduce complexity, improve run time, determine feature importance, and prevent the curse of dimensionality.
 
-The significant difference between UMAP and TSNE is scalability, UMAP can be applied directly to sparse matrices thereby eliminating the need to apply any Dimensionality reduction such as PCA as a pre-processing step. Simply, UMAP is similar to t-SNE but with probably higher processing speed, therefore, faster and better visualization.
+The significant difference between UMAP and TSNE is scalability, UMAP can be applied directly to sparse matrices thereby eliminating the need to apply any Dimensionality reduction such as PCA as a pre-processing step. Simply, UMAP is similar to t-SNE but with probably higher processing speed.
+
