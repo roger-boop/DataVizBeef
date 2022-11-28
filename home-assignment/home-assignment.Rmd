@@ -9,11 +9,21 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+## Introduction
+
+For this project we will use three data frames containing the expression different genes have in certain cells after being exposed to some drugs in order to determine if there is a big disparity between the effects of each substance or instead they have near identical consequences.
+
+To aid us in this task we have a file containing the metadata of each sample, in specific their cell type and the drug it has been subjected to.
+
+The tools we will use to visualise our data are: PCA(principal component analysis), tSNE(t-Distributed Stochastic Neighbor Embedding) and UMAP(Uniform Manifold Approximation and Projection).
+ 
+With all the materials defined let's get going with the analysis.
+
 ## Q1
 
 **Load the data from the three plates. Which command do you use? Provide code alternatives and prove that the data is loaded.**
 
-An easy way to load the data is with `read.table()`
+Our first step in this analysis is to load the data contained in the tsv files, an easy way to perform this task is with a simple `read.table()`.
 
 ```{r q1-loads, error=TRUE}
 P3 <- read.table('P3.tsv', header = TRUE)
@@ -21,7 +31,7 @@ P4 <- read.table('P4.tsv', header = TRUE)
 P5 <- read.table('P5.tsv', header = TRUE)
 ```
 
-The method used above requires us to decompress the data, which might not be a good idea when working with large files, that is why we will use the `gzfile()` function to avoid this problem.
+This method but has the inconvenience of requiring to decompress the data, which might not be a good idea when working with large files, that is why we will use the `gzfile()` function to avoid this problem.
 
 ```{r q1-loads-alt, error=TRUE}
 P3_2 <- read.table(gzfile("P3.tsv.gz"), header = TRUE)
@@ -29,7 +39,9 @@ P4_2 <- read.table(gzfile("P4.tsv.gz"), header = TRUE)
 P5_2 <- read.table(gzfile("P5.tsv.gz"), header = TRUE)
 ```
 
-Another way of loading the data is to use `read_tsv()`, a function specialized in loading tsv files into R.
+While read.table is the standard to import any table into r, there are some other functions we can use to import tsv files:
+
+  - We could use `read_tsv()`, a function specialized in loading tsv files into R.
 
 ```{r q1-loads-alt2, error=TRUE}
 library(readr)
@@ -38,7 +50,7 @@ P4_3 <- read_tsv(gzfile("P4.tsv.gz"), col_names = TRUE)
 P5_3 <- read_tsv(gzfile("P5.tsv.gz"), col_names = TRUE)
 ```
 
-We could also treat our data like a csv file and load it into R using `read_csv()`. In this case we must specify that each column is separated by a tab in order to prevent the function of returning a table with just one column.
+  - We could also treat our data like a csv file and load it into R using `read_csv()`. In this case we must specify that each column is separated by a tab in order to prevent the function of returning a table with just one column.
 
 ```{r, error=TRUE}
 P3_4 <- read.csv(gzfile("P3.tsv.gz"), header = TRUE, sep = "\t")
@@ -46,7 +58,7 @@ P4_4 <- read.csv(gzfile("P4.tsv.gz"), header = TRUE, sep = "\t")
 P5_4 <- read.csv(gzfile("P5.tsv.gz"), header = TRUE, sep = "\t")
 ```
 
-Finally we can take advantage of the fact that tsv files are delimited text files to load our data using `read.delim()`.
+  - Finally we can take advantage of the fact that tsv files are delimited text files to load our data using `read.delim()`.
 
 ```{r, error=TRUE}
 P3_5 <- read.delim(gzfile("P3.tsv.gz"), header = TRUE)
@@ -54,7 +66,7 @@ P4_5 <- read.delim(gzfile("P4.tsv.gz"), header = TRUE)
 P5_5 <- read.delim(gzfile("P5.tsv.gz"), header = TRUE)
 ```
 
-We can show the data is loaded by performing `head()` on them, which will print out the first few lines of the dataframe. We will not print them here, as the dataset is huge, but you can do so in your own. If it does not raise any error, the data is loaded OK. 
+Now we will check that the data has been loaded as expected using `head()`, a function that prints the first few lines of the data frame it receives as input. Since we are testing all the methods used to load the data showing the output of the following chunk would fill the html with non-relevant information, that is why you will have to trust us when we say the code worked as expected or replicate what we have done until now to test it.
 
 ```{r q1-evidence, error=TRUE, results='hide'}
 #Data loaded with read.table
@@ -75,7 +87,8 @@ head(P4_5)
 head(P5_5)
 ```
 
-Having the samples as row names and the genes as column names will make our data more intuitive to work with, that is why we will transpose our tables.
+Right now our tables have the name of the genes as row names and the sample names as colnames, this makes our data unintuitive to navegate so we will set the gene column as rownames, remove it since it is no longer necessary, and transpose the tables so everything looks as we want to. 
+
 
 ```{r q1-transpose_matrix}
 rownames(P3) <- P3$gene
@@ -94,7 +107,7 @@ P5 <- t(P5)
 
 **Load the treatment associated with every cell. Which command do you use? How many different conditions are present in the plates? How many cells in each condition? Do you need to reorder cells so that data in sample sheet and tsv files match?**
 
-We can use the `read.table()` command again. Let's also split the *label* column in *celltypes* and *conditions*.
+The treatment associated to each cell can be found in the samplesheet.tsv, to load it we can use the `read.table()` command again.
 
 ```{r q2-packages, message=FALSE}
 library(dplyr)
@@ -103,26 +116,44 @@ library(tidyr)
 
 ```{r q2-load}
 treatments <- read.table('samplesheet.tsv', header = TRUE)
+```
 
+The table loaded contains cell types and conditions inside the column label, this is too much information for just a column so we will separate both features using the functions %>% and separate from the packages dplyr and tidyr respectively.
+
+```{r q2-separate}
 treatments <- treatments %>% separate(col = label, into = c("celltypes", "conditions"), sep = "\\+")
 ```
 
-Now, let's check the number of conditions. 
+With the conditions separated from celltypes we can easily check how many we have using the table function, which creates a table containing the number of times a condition appears in treatments.
 
 ```{r q2-cond}
 table(treatments$conditions)
 ```
 
-We can also see the amount of cell types in each condition.
+**Thanks to the table above we know there are 3 different conditions present in the plates.**
+
+**The same table can be used to know how many cells are present in each condition.**
 
 ```{r q2-cellconds}
 table(treatments$conditions, treatments$celltypes)
 ```
 
-In order to determine whether or not we have to record cell names, we will check if the indexes for each cell match in the tsv files and in treatments. If they do, then we can remove them since we will already know which cell each column is referring to by binding the data with the tsv files. Otherwise we will have to record it.
+Finally we need to figure out if we need to record cell names or not by checking if the indexes for each cell are the same in all the dataframes created. If they do, then we can remove them since we will already know which cell each column is referring to by binding the metadata with the tsv files, otherwise we will have to record it.
+
+Our way of knowing wether the indexes align in all dataframes or not is by looking for false values in a condition that compares the rownames of P3, P4 and P5 with the cellnames present in treatment.
+
 
 ```{r q3-record_cell_or_not, echo=T}
-treatments$cellnames == cbind(rownames(P3), rownames(P4), rownames(P5))
+table(treatments$cellnames == cbind(rownames(P3), rownames(P4), rownames(P5)))
+```
+
+**As we can see no False boolean appears which means all the indexes are identical and therefore, there is no need to record the cell names.**
+
+Taking advantatge of the fact we are working with the treatments dataframe we are going to add a new column that contains the plate from which each cell comes from. Eventhough this new feature might seem useless right now it will be of use later when we check if there is batch effect or not.
+
+To create this new column we used rep to generate the vectors that will conform the new feature and append to put it all together and add the new column to the dataframe.
+
+```{r bind}
 treatments$replicates <- append(append(rep("P3", 96), rep("P4",96)), rep("P5", 96))
 ```
 
@@ -356,6 +387,10 @@ ENSG00000251562.8  ENSG00000198804.2  ENSG00000280614.1
 Are activated by SAHA but not by PMA.
 
 
+
+
+
+
 ## Q8
 
 **Create a UMAP visualization of the results. Explore differences between producing**
@@ -381,12 +416,9 @@ Let's do both UMAPs, for normalized and non-normalized data, and compare them.
 ```{r umap-1}
 UMAP_X <- umap::umap(X)
 UMAP_Y <- umap::umap(Y)
-
 UMAP_data_X <- make_umap_data(UMAP_X)
 UMAP_data_Y <- make_umap_data(UMAP_Y)
-
 ggplot(UMAP_data_X, aes(x = x, y = y, shape = col.conditions, color=col.replicates)) + geom_point() + scale_shape_manual(values = c(3,17, 11)) + theme_light() + labs(color = "Expression", shape = "Conditions", title = "Non-scaled UMAP")
-
 ggplot(UMAP_data_Y, aes(x = x, y = y, shape = col.conditions, color=col.replicates)) + geom_point() + scale_shape_manual(values = c(3,17, 11)) + theme_light() + labs(color = "Expression", shape = "Conditions", title = "Normalized UMAP")
 ```
 
@@ -406,9 +438,7 @@ Next, let's make some predictions with UMAP. We will re-do the plot above but wi
 
 ```{r umap-predictions}
 UMAP_predicted = stats::predict(UMAP_Y, Y)
-
 UMAP_predicted_data <- data.frame(x = UMAP_predicted[,1], y = UMAP_predicted[,2], col = treatments)
-
 ggplot(UMAP_predicted_data, aes(x = x, y = y, shape = col.conditions, color=totalExpr(X))) + geom_point() + 
   scale_colour_gradient(low = "#00FF00", high = "#FF0000") + scale_shape_manual(values = c(3,17, 11)) + theme_light() + 
   labs(color = "Expression", shape = "Conditions", title = "Normalized UMAP")
@@ -431,9 +461,7 @@ for (i in c(0.1,0.5,0.9))
   tmp.config$min_dist <- i
     
   UMAP_tmp <- umap::umap(Y, config = tmp.config)
-
   UMAP_data_tmp <- make_umap_data(UMAP_tmp)
-
   print(ggplot(UMAP_data_tmp, aes(x = x, y = y, shape = col.conditions, color=col.replicates)) + geom_point() + scale_shape_manual(values = c(3,17, 11)) +
           theme_light() + labs(color = "Expression", shape = "Conditions", title = paste0("UMAP with minimum distance = ", i)))
   
@@ -451,9 +479,7 @@ for (i in c(2,10,50))
   tmp.config$n_neighbors <- i
     
   UMAP_tmp <- umap::umap(Y, config = tmp.config)
-
   UMAP_data_tmp <- make_umap_data(UMAP_tmp)
-
   print(ggplot(UMAP_data_tmp, aes(x = x, y = y, shape = col.conditions, color=col.replicates)) + geom_point() + scale_shape_manual(values = c(3,17, 11)) +
           theme_light() + labs(color = "Expression", shape = "Conditions", title = paste0("UMAP with num. neighbors = ", i)))
   
