@@ -21,7 +21,7 @@ With all the materials defined let's get going with the analysis.
 
 ## Q1
 
-**Load the data from the three plates. Which command do you use? Provide code alternatives and prove that the data is loaded.**
+### **Load the data from the three plates. Which command do you use? Provide code alternatives and prove that the data is loaded.**
 
 Our first step in this analysis is to load the data contained in the tsv files, an easy way to perform this task is with a simple `read.table()`.
 
@@ -105,7 +105,7 @@ P5 <- t(P5)
 
 ## Q2
 
-**Load the treatment associated with every cell. Which command do you use? How many different conditions are present in the plates? How many cells in each condition? Do you need to reorder cells so that data in sample sheet and tsv files match?**
+### **Load the treatment associated with every cell. Which command do you use? How many different conditions are present in the plates? How many cells in each condition? Do you need to reorder cells so that data in sample sheet and tsv files match?**
 
 The treatment associated to each cell can be found in the samplesheet.tsv, to load it we can use the `read.table()` command again.
 
@@ -165,7 +165,7 @@ X <- rbind(P3, P4, P5)
 
 ## Q3
 
-**Represent the data with a PCA projection and tSNE. Scale and normalize the data appropriately, showing the different steps in the process and compare with the raw data. Using colors, argue whether batch effects are present between the three plates. Provide different visualizations and/or code alternatives.**
+### **Represent the data with a PCA projection and tSNE. Scale and normalize the data appropriately, showing the different steps in the process and compare with the raw data. Using colors, argue whether batch effects are present between the three plates. Provide different visualizations and/or code alternatives.**
 
 With all the data in a whole dataframe we can start plotting it. We will first perform a PCA.
 
@@ -293,7 +293,7 @@ While we have gotten rid of tha batch effect in both PCA and tSNE the graphs obt
 
 ## Q4
 
-**Check the effect of perplexity and iterations, the same as scaling the data for tSNE and PCA plots respectively.**
+### **Check the effect of perplexity and iterations, the same as scaling the data for tSNE and PCA plots respectively.**
 
 tSNE has perplexity and iteration parameters that we have left as default until now, let's check how they affect the results starting from perplexity.
 
@@ -325,7 +325,7 @@ for (i in c(5, 500, 2000))
 
 ## Q5
 
-**Argue whether the drugs SAHA and PMA have the same effect on the cells. Add a legend and label the axes accordingly.**
+### **Argue whether the drugs SAHA and PMA have the same effect on the cells. Add a legend and label the axes accordingly.**
 
 Now that we have the data looking as we want to and we have observed how tSNE and PCA are affected by different parameters it is time to start extracting conclusions from our data, in particular we'll start answering our initial question in the introduction with SAHA and PMA, do they have the same effect?
 
@@ -350,7 +350,7 @@ ggplot(components_filtered, aes(x = PC1, y = PC2, color = conditions, shape = ce
 
 ## Q6
 
-**Using the correct PCA analysis, find an interpretation for the first and the second principal component.**
+### **Using the correct PCA analysis, find an interpretation for the first and the second principal component.**
 
 If we are to extract conclusions from the PCA analyses we perform it would we wise to figure out what PC1 and PC2 use to divide our data into clusters.
 
@@ -374,7 +374,7 @@ pl
 
 ## Q7
 
-**Using your answer to the previous question, find three genes that are activated by SAHA but not by PMA.**
+### **Using your answer to the previous question, find three genes that are activated by SAHA but not by PMA.**
 
 Now is finally time to apply what we have learned from observing the two last PCA plots to extract three genes activated by SAHA but not by PMA.
 
@@ -398,9 +398,9 @@ ENSG00000251562.8  ENSG00000198804.2  ENSG00000280614.1
 
 Are activated by SAHA but not by PMA.
 
-# Conclusions extracted until now
+## Conclusions extracted until now
 
-  Up until now we have seen how PCA and tSNE are both useful data visualisation algorithms with their own advantatges and disadvantatges. For this particular case we have leaned towards PCA due to it's high speed when compared to tSNE, which is an important factor to take into account when we have performed 3 PCAs to extract some information about out data.
+  Up until now we have seen how PCA and tSNE are both useful data visualisation algorithms with their own advantatges and disadvantatges. For this particular case we have leaned towards PCA due to it's high speed when compared to tSNE, which is an important factor to take into account when we have performed 3 PCAs to extract some information about our data.
   
   Regarding our initial question it seems that PMA has the same effect as DMSO on cells which differs from the consequences brought by SAHA.
   
@@ -409,10 +409,10 @@ Are activated by SAHA but not by PMA.
 
 ## Q8
 
-**Create a UMAP visualization of the results. Explore differences between producing**
-**results from raw data counts or normalized results. Explore also the effect of predicting**
-**a new sample result from previous UMAP analysis. Compare results and give some**
-**thoughts on it.**
+### **Create a UMAP visualization of the results. Explore differences between producing**
+### **results from raw data counts or normalized results. Explore also the effect of predicting**
+### **a new sample result from previous UMAP analysis. Compare results and give some**
+### **thoughts on it.**
 
 To apply the umap algorithm we will use the umap function,
 
@@ -462,13 +462,12 @@ ggplot(UMAP_predicted_data, aes(x = x, y = y, shape = col.conditions, color=tota
   labs(color = "Expression", shape = "Conditions", title = "Normalized UMAP")
 ```
 
-We can see that both plots are remarkably similar, with some minor differences, but the clusters remain the same.
-A posible explanation for such fidelityt could be that the data used to create UMAP_Y is also the one we are giving to the prediction, therefore we might be having overfitting.
+**We can see that both plots are remarkably similar, with some minor differences, but the clusters remain the same. A posible explanation for such fidelity could be that the data used to create UMAP_Y is also the one we are giving to the prediction, therefore we might be having overfitting.**
 
 ## Q9
 
-**Test some parameters such as minimum distance and number of neighbors. Compare**
-**results and give some thoughts on it.**
+### **Test some parameters such as minimum distance and number of neighbors. Compare**
+### **results and give some thoughts on it.**
 
 UMAP has minimum distance and number of neighbors as parameters that we have been leacing on their default value, since we want to know how UMAP interacts with out data in comparassion to PCA and tSNE knowing the effect this two parameters have is a must.
 
@@ -510,9 +509,9 @@ This variable determines the maximum number of neighbors each point can have. No
 
 ## Q10
 
-**Create a final visualization using results from PCA, tSNE and UMAP and write some thoughts**
-**on the comparison of the three high-dimension techniques.**
-**Use as many metadata available as possible and generate clear and easy to interpret plots.**
+### **Create a final visualization using results from PCA, tSNE and UMAP and write some thoughts**
+### **on the comparison of the three high-dimension techniques.**
+### **Use as many metadata available as possible and generate clear and easy to interpret plots.**
 
 Now that we know how UMAP affects our data it is time to compare the three data visualization techniques used in this assignment. For that we will create a plot for each technique and discuss each of them.
 
